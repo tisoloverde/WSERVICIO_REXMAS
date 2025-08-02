@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.34916.146
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "REX_Consumer_WorkerService", "REX_Consumer_WorkerService\REX_Consumer_WorkerService.csproj", "{7EE15136-8E97-4FE5-8A4C-23BE7294ABD1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7EE15136-8E97-4FE5-8A4C-23BE7294ABD1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7EE15136-8E97-4FE5-8A4C-23BE7294ABD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7EE15136-8E97-4FE5-8A4C-23BE7294ABD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7EE15136-8E97-4FE5-8A4C-23BE7294ABD1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {82463130-D2B4-4748-A82D-F76862F681F7}
+	EndGlobalSection
+EndGlobal
