@@ -16,6 +16,15 @@ namespace REX_Consumer_WorkerService.Models
 		public decimal Valora { get; set; } = 0;
 		public decimal Valorb { get; set; } = 0;
 		public decimal Valorc { get; set; } = 0;
+		public decimal Valord { get; set; } = 0;
+		public string Valore { get; set; } = string.Empty;
+		public string Valorf { get; set; } = string.Empty;
+		public string Valorg { get; set; } = string.Empty;
+		public string Valorh { get; set; } = string.Empty;
+		public string Valori { get; set; } = string.Empty;
+		public string Valorj { get; set; } = string.Empty;
+		public string Valork { get; set; } = string.Empty;
+		public string Valorl { get; set; } = string.Empty;
 		public string DatoAdic { get; set; } = string.Empty;
 		public string Lista { get; set; } = string.Empty;
 		public Boolean Habilitado { get; set; } = false;

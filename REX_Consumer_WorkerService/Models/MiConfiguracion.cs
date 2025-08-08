@@ -26,5 +26,15 @@ namespace REX_Consumer_WorkerService.Models
 		public string CatalogoNivelEstudio { get; set; } = string.Empty;
 		public string CatalogoNivelOcupacional { get; set; } = string.Empty;
 		public string CatalogoRelaciones {  get; set; } = string.Empty;
+		public string CatalogoCausalesTerminoContrato { get; set; } = string.Empty;
+		public string CatalogoCargoGenericoUnificado { get; set; } = string.Empty;
+		public string CatalogoReferencia1 { get; set; } = string.Empty;
+		public string CatalogoReferencia2 { get; set; } = string.Empty;
+		public string CatalogoFeriados { get; set; } = string.Empty;
+		public string CatalogoFeriadosMovi { get; set; } = string.Empty;
+
+		public string ConstanteTipoContrato { get; set; } = string.Empty;
+		public string ConstanteEstadoContrato { get; set; } = string.Empty;
+
 	}
 }

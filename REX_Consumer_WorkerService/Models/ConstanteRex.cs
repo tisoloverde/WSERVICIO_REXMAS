@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 
 namespace REX_Consumer_WorkerService.Models
 {
-	public class RootObjectCargo
+	public  class ConstanteRex
 	{
-		public List<Cargo> objetos { get; set; }
+		public string Item { get; set; } = string.Empty;
+		public string Nombre { get; set; } = string.Empty;
 	}
 }

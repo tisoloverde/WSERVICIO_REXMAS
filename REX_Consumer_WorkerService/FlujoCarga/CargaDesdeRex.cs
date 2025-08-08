@@ -51,7 +51,19 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 				CatalogoLicenciaConducir = configuration["MiConfiguracion:CatalogoLicenciaConducir"],
 				CatalogoNivelEstudio = configuration["MiConfiguracion:CatalogoNivelEstudio"],
 				CatalogoNivelOcupacional = configuration["MiConfiguracion:CatalogoNivelOcupacional"],
-				CatalogoRelaciones = configuration["MiConfiguracion:CatalogoRelaciones"]
+				CatalogoRelaciones = configuration["MiConfiguracion:CatalogoRelaciones"],
+				CatalogoCausalesTerminoContrato = configuration["MiConfiguracion:CatalogoCausalesTerminoContrato"],
+
+				CatalogoCargoGenericoUnificado = configuration["MiConfiguracion:CatalogoCargoGenericoUnificado"],
+				CatalogoReferencia1 = configuration["MiConfiguracion:CatalogoReferencia1"],
+				CatalogoReferencia2 = configuration["MiConfiguracion:CatalogoReferencia2"],
+				CatalogoFeriados = configuration["MiConfiguracion:CatalogoFeriados"],
+				CatalogoFeriadosMovi = configuration["MiConfiguracion:CatalogoFeriadosMovi"],
+
+				ConstanteTipoContrato = configuration["MiConfiguracion:ConstanteTipoContrato"],
+				ConstanteEstadoContrato = configuration["MiConfiguracion:ConstanteEstadoContrato"],
+
+
 			};
 
 		}
@@ -88,7 +100,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 				{
 					Console.ForegroundColor = ConsoleColor.Blue;
 					Console.WriteLine("Inicio carga de datos desde REX...");
-					// Carga referencia bancos
+					// Carga referencia empresas
 					resultado = await CargaEmpresas(loginToken.Token);
 					Console.ForegroundColor = ConsoleColor.Blue;
 					Console.WriteLine("Inicio carga de datos desde REX...");
@@ -122,10 +134,62 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 					Console.WriteLine("Inicio carga de datos desde REX...");
 					// Carga referencia instituciones (isapres, afp, otros)
 					resultado = await CargaInstituciones(loginToken.Token);
-					
+
+					Console.ForegroundColor = ConsoleColor.Blue;
+					Console.WriteLine("Inicio carga de datos desde REX...");
+					// Carga referencia terminos de contratos (finiquitos)
+					resultado = await CargaTerminosContrato(loginToken.Token);
+
+					Console.ForegroundColor = ConsoleColor.Blue;
+					Console.WriteLine("Inicio carga de datos desde REX...");
+					// Carga referencia tipos de contratos (constantes)
+					resultado = await CargaTiposContrato(loginToken.Token);
+
+					Console.ForegroundColor = ConsoleColor.Blue;
+					Console.WriteLine("Inicio carga de datos desde REX...");
+					// Carga referencia tipos de contratos (constantes)
+					resultado = await CargaEstadosContrato(loginToken.Token);
+
 				}
 
+				// Carga cargos liquidacion (catalogos)
+				resultado = new Resultado();
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio carga de datos desde REX...");
+				// Carga cargos genericos desde catalogos
+				resultado = await CargaCargosLiquidacion(loginToken.Token);
 
+				// Carga cargos genericos unificados (catalogos)
+				resultado = new Resultado();
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio carga de datos desde REX...");
+				// Carga cargos genericos desde catalogos
+				resultado = await CargaCargosGenericos(loginToken.Token);
+
+				resultado = new Resultado();
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio carga de datos desde REX...");
+				// Carga referencias 1 desde catalogos 
+				resultado = await CargaReferencias1(loginToken.Token);
+
+				resultado = new Resultado();
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio carga de datos desde REX...");
+				// Carga referencias 2 desde catalogos 
+				resultado = await CargaReferencias2(loginToken.Token);
+
+				resultado = new Resultado();
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio carga de datos desde REX...");
+				// Carga feriados desde catalogos 
+				resultado = await CargaFeriados(loginToken.Token);
+
+				resultado = new Resultado();
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio carga de datos desde REX...");
+				// Carga feriados movi desde catalogos 
+				resultado = await CargaFeriadosMovi(loginToken.Token);
+						
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Inicio carga de datos desde REX...");
 				// Carga centros de costo
@@ -160,8 +224,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 				resultado = await CargaVacaciones(loginToken.Token);
 				resultado = new Resultado();
 				
-				// Carga cargos
-				resultado = await CargaCargos(loginToken.Token);
+				
 
 			}
 
@@ -243,7 +306,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 		}
 
 		/// <summary>
-		/// Método para cargar los bancos desde la API de REX
+		/// Método para cargar los bancos desde la API de REX (PARTE DE CATALOGOS)
 		/// </summary>
 		/// <param name="Token"></param>
 		/// <returns></returns>
@@ -257,7 +320,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 			List<CatalogoRex> bancos = new List<CatalogoRex>();
 			string contents;
 			var client = new HttpClient();
-			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoBanco + "?detalle=True");
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoBanco + "?detalle=True&pagina=0");
 			request.Headers.Add("Authorization", "Token " + Token);
 			var content = new StringContent(string.Empty);
 			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -270,8 +333,12 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Consulta finalizada correctamente...");
 				// Deserializar el contenido JSON en un objeto de tipo RootObjectCatalogo
-				var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
-				bancos = rootObjectCatalogo.objetos;
+				
+				//var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
+				//bancos = rootObjectCatalogo.objetos;
+
+				bancos = JsonConvert.DeserializeObject<List<CatalogoRex>>(contents);
+
 				// Grabación de datos en SQL Server (Tabla de paso bancos)
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Regitrando información temporal de bancos...");
@@ -290,6 +357,15 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 						dynamicParameters.Add("@Valora", banco.Valora);
 						dynamicParameters.Add("@Valorb", banco.Valorb);
 						dynamicParameters.Add("@Valorc", banco.Valorc);
+						dynamicParameters.Add("@Valord", banco.Valord);
+						dynamicParameters.Add("@Valore", banco.Valore);
+						dynamicParameters.Add("@Valorf", banco.Valorf);
+						dynamicParameters.Add("@Valorg", banco.Valorg);
+						dynamicParameters.Add("@Valorh", banco.Valorh);
+						dynamicParameters.Add("@Valori", banco.Valori);
+						dynamicParameters.Add("@Valorj", banco.Valorj);
+						dynamicParameters.Add("@Valork", banco.Valork);
+						dynamicParameters.Add("@Valorl", 0);
 						dynamicParameters.Add("@DatoAdic", banco.DatoAdic);
 						dynamicParameters.Add("@Lista", banco.Lista);
 						dynamicParameters.Add("@Habilitado", banco.Habilitado);
@@ -322,7 +398,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 		}
 
 		/// <summary>
-		/// Método para cargar las profesiones desde la API de REX  
+		/// Método para cargar las profesiones desde la API de REX  (PARTE DE CATALOGOS)
 		/// </summary>
 		/// <param name="Token"></param>
 		/// <returns></returns>
@@ -336,7 +412,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 			List<CatalogoRex> profesiones = new List<CatalogoRex>();
 			string contents;
 			var client = new HttpClient();
-			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoProfesion + "?detalle=True");
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoProfesion + "?detalle=True&pagina=0");
 			request.Headers.Add("Authorization", "Token " + Token);
 			var content = new StringContent(string.Empty);
 			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -349,8 +425,12 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Consulta finalizada correctamente...");
 				// Deserializar el contenido JSON en un objeto de tipo RootObjectCatalogo
-				var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
-				profesiones = rootObjectCatalogo.objetos;
+				
+				//var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
+				//profesiones = rootObjectCatalogo.objetos;
+
+				profesiones = JsonConvert.DeserializeObject<List<CatalogoRex>>(contents);
+
 				// Grabación de datos en SQL Server (Tabla de paso profesiones)
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Regitrando información temporal de profesiones...");
@@ -369,6 +449,15 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 						dynamicParameters.Add("@Valora", profesion.Valora);
 						dynamicParameters.Add("@Valorb", profesion.Valorb);
 						dynamicParameters.Add("@Valorc", profesion.Valorc);
+						dynamicParameters.Add("@Valord", profesion.Valord);
+						dynamicParameters.Add("@Valore", profesion.Valore);
+						dynamicParameters.Add("@Valorf", profesion.Valorf);
+						dynamicParameters.Add("@Valorg", profesion.Valorg);
+						dynamicParameters.Add("@Valorh", profesion.Valorh);
+						dynamicParameters.Add("@Valori", profesion.Valori);
+						dynamicParameters.Add("@Valorj", profesion.Valorj);
+						dynamicParameters.Add("@Valork", profesion.Valork);
+						dynamicParameters.Add("@Valorl", 0);
 						dynamicParameters.Add("@DatoAdic", profesion.DatoAdic);
 						dynamicParameters.Add("@Lista", profesion.Lista);
 						dynamicParameters.Add("@Habilitado", profesion.Habilitado);
@@ -401,7 +490,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 		}
 
 		/// <summary>
-		/// Método para cargar las formas de pago desde la API de REX
+		/// Método para cargar las formas de pago desde la API de REX (PARTE DE CATALOGOS)
 		/// </summary>
 		/// <param name="Token"></param>
 		/// <returns></returns>
@@ -415,7 +504,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 			List<CatalogoRex> formasPago = new List<CatalogoRex>();
 			string contents;
 			var client = new HttpClient();
-			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoFormaPago + "?detalle=True");
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoFormaPago + "?detalle=True&pagina=0");
 			request.Headers.Add("Authorization", "Token " + Token);
 			var content = new StringContent(string.Empty);
 			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -428,8 +517,12 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Consulta finalizada correctamente...");
 				// Deserializar el contenido JSON en un objeto de tipo RootObjectCatalogo
-				var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
-				formasPago = rootObjectCatalogo.objetos;
+
+				//var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
+				//formasPago = rootObjectCatalogo.objetos;
+
+				formasPago = JsonConvert.DeserializeObject<List<CatalogoRex>>(contents);
+
 				// Grabación de datos en SQL Server (Tabla de paso catalogo)
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Regitrando información temporal de formas de pago...");
@@ -448,6 +541,15 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 						dynamicParameters.Add("@Valora", formaPago.Valora);
 						dynamicParameters.Add("@Valorb", formaPago.Valorb);
 						dynamicParameters.Add("@Valorc", formaPago.Valorc);
+						dynamicParameters.Add("@Valord", formaPago.Valord);
+						dynamicParameters.Add("@Valore", formaPago.Valore);
+						dynamicParameters.Add("@Valorf", formaPago.Valorf);
+						dynamicParameters.Add("@Valorg", formaPago.Valorg);
+						dynamicParameters.Add("@Valorh", formaPago.Valorh);
+						dynamicParameters.Add("@Valori", formaPago.Valori);
+						dynamicParameters.Add("@Valorj", formaPago.Valorj);
+						dynamicParameters.Add("@Valork", formaPago.Valork);
+						dynamicParameters.Add("@Valorl", 0);
 						dynamicParameters.Add("@DatoAdic", formaPago.DatoAdic);
 						dynamicParameters.Add("@Lista", formaPago.Lista);
 						dynamicParameters.Add("@Habilitado", formaPago.Habilitado);
@@ -480,7 +582,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 		}
 
 		/// <summary>
-		/// Método para cargar los tipos de licencia de conducir desde la API de REX
+		/// Método para cargar los tipos de licencia de conducir desde la API de REX (PARTE DE CATALOGOS)
 		/// </summary>
 		/// <param name="Token"></param>
 		/// <returns></returns>
@@ -494,7 +596,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 			List<CatalogoRex> licenciasConducir = new List<CatalogoRex>();
 			string contents;
 			var client = new HttpClient();
-			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoLicenciaConducir + "?detalle=True");
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoLicenciaConducir + "?detalle=True&pagina=0");
 			request.Headers.Add("Authorization", "Token " + Token);
 			var content = new StringContent(string.Empty);
 			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -507,8 +609,12 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Consulta finalizada correctamente...");
 				// Deserializar el contenido JSON en un objeto de tipo RootObjectCatalogo
-				var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
-				licenciasConducir = rootObjectCatalogo.objetos;
+
+				//var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
+				//licenciasConducir = rootObjectCatalogo.objetos;
+
+				licenciasConducir = JsonConvert.DeserializeObject<List<CatalogoRex>>(contents);
+
 				// Grabación de datos en SQL Server (Tabla de paso Catalogo)
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Regitrando información temporal de licencias de conducir...");
@@ -527,6 +633,15 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 						dynamicParameters.Add("@Valora", licenciaConducir.Valora);
 						dynamicParameters.Add("@Valorb", licenciaConducir.Valorb);
 						dynamicParameters.Add("@Valorc", licenciaConducir.Valorc);
+						dynamicParameters.Add("@Valord", licenciaConducir.Valord);
+						dynamicParameters.Add("@Valore", licenciaConducir.Valore);
+						dynamicParameters.Add("@Valorf", licenciaConducir.Valorf);
+						dynamicParameters.Add("@Valorg", licenciaConducir.Valorg);
+						dynamicParameters.Add("@Valorh", licenciaConducir.Valorh);
+						dynamicParameters.Add("@Valori", licenciaConducir.Valori);
+						dynamicParameters.Add("@Valorj", licenciaConducir.Valorj);
+						dynamicParameters.Add("@Valork", licenciaConducir.Valork);
+						dynamicParameters.Add("@Valorl", 0);
 						dynamicParameters.Add("@DatoAdic", licenciaConducir.DatoAdic);
 						dynamicParameters.Add("@Lista", licenciaConducir.Lista);
 						dynamicParameters.Add("@Habilitado", licenciaConducir.Habilitado);
@@ -559,7 +674,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 		}
 
 		/// <summary>
-		/// Método para cargar los niveles de estudio desde la API de REX
+		/// Método para cargar los niveles de estudio desde la API de REX (PARTE DE CATALOGOS)
 		/// </summary>
 		/// <param name="Token"></param>
 		/// <returns></returns>
@@ -573,7 +688,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 			List<CatalogoRex> nivelesEstudio = new List<CatalogoRex>();
 			string contents;
 			var client = new HttpClient();
-			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoNivelEstudio + "?detalle=True");
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoNivelEstudio + "?detalle=True&pagina=0");
 			request.Headers.Add("Authorization", "Token " + Token);
 			var content = new StringContent(string.Empty);
 			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -586,8 +701,12 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Consulta finalizada correctamente...");
 				// Deserializar el contenido JSON en un objeto de tipo RootObjectCatalogo
-				var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
-				nivelesEstudio = rootObjectCatalogo.objetos;
+
+				//var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
+				//nivelesEstudio = rootObjectCatalogo.objetos;
+
+				nivelesEstudio = JsonConvert.DeserializeObject<List<CatalogoRex>>(contents);
+
 				// Grabación de datos en SQL Server (Tabla de paso Catalogo)
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Regitrando información temporal de niveles de estudio...");
@@ -606,6 +725,15 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 						dynamicParameters.Add("@Valora", nivelEstudio.Valora);
 						dynamicParameters.Add("@Valorb", nivelEstudio.Valorb);
 						dynamicParameters.Add("@Valorc", nivelEstudio.Valorc);
+						dynamicParameters.Add("@Valord", nivelEstudio.Valord);
+						dynamicParameters.Add("@Valore", nivelEstudio.Valore);
+						dynamicParameters.Add("@Valorf", nivelEstudio.Valorf);
+						dynamicParameters.Add("@Valorg", nivelEstudio.Valorg);
+						dynamicParameters.Add("@Valorh", nivelEstudio.Valorh);
+						dynamicParameters.Add("@Valori", nivelEstudio.Valori);
+						dynamicParameters.Add("@Valorj", nivelEstudio.Valorj);
+						dynamicParameters.Add("@Valork", nivelEstudio.Valork);
+						dynamicParameters.Add("@Valorl", 0);
 						dynamicParameters.Add("@DatoAdic", nivelEstudio.DatoAdic);
 						dynamicParameters.Add("@Lista", nivelEstudio.Lista);
 						dynamicParameters.Add("@Habilitado", nivelEstudio.Habilitado);
@@ -638,7 +766,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 		}
 
 		/// <summary>
-		/// Método para cargar los niveles de ocupacion desde la API de REX
+		/// Método para cargar los niveles de ocupacion desde la API de REX (PARTE DE CATALOGOS)
 		/// </summary>
 		/// <param name="Token"></param>
 		/// <returns></returns>
@@ -652,7 +780,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 			List<CatalogoRex> nivelesOcupacion = new List<CatalogoRex>();
 			string contents;
 			var client = new HttpClient();
-			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoNivelOcupacional + "?detalle=True");
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoNivelOcupacional + "?detalle=True&pagina=0");
 			request.Headers.Add("Authorization", "Token " + Token);
 			var content = new StringContent(string.Empty);
 			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -665,8 +793,12 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Consulta finalizada correctamente...");
 				// Deserializar el contenido JSON en un objeto de tipo RootObjectCatalogo
-				var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
-				nivelesOcupacion = rootObjectCatalogo.objetos;
+
+				//var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
+				//nivelesOcupacion = rootObjectCatalogo.objetos;
+
+				nivelesOcupacion = JsonConvert.DeserializeObject<List<CatalogoRex>>(contents);
+
 				// Grabación de datos en SQL Server (Tabla de paso Catalogo)
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Regitrando información temporal de niveles de ocupación...");
@@ -685,6 +817,15 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 						dynamicParameters.Add("@Valora", nivelOcupacion.Valora);
 						dynamicParameters.Add("@Valorb", nivelOcupacion.Valorb);
 						dynamicParameters.Add("@Valorc", nivelOcupacion.Valorc);
+						dynamicParameters.Add("@Valord", nivelOcupacion.Valord);
+						dynamicParameters.Add("@Valore", nivelOcupacion.Valore);
+						dynamicParameters.Add("@Valorf", nivelOcupacion.Valorf);
+						dynamicParameters.Add("@Valorg", nivelOcupacion.Valorg);
+						dynamicParameters.Add("@Valorh", nivelOcupacion.Valorh);
+						dynamicParameters.Add("@Valori", nivelOcupacion.Valori);
+						dynamicParameters.Add("@Valorj", nivelOcupacion.Valorj);
+						dynamicParameters.Add("@Valork", nivelOcupacion.Valork);
+						dynamicParameters.Add("@Valorl", 0);
 						dynamicParameters.Add("@DatoAdic", nivelOcupacion.DatoAdic);
 						dynamicParameters.Add("@Lista", nivelOcupacion.Lista);
 						dynamicParameters.Add("@Habilitado", nivelOcupacion.Habilitado);
@@ -717,7 +858,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 		}
 
 		/// <summary>
-		/// Método para cargar las relaciones (vinculo familiar) desde la API de REX
+		/// Método para cargar las relaciones (vinculo familiar) desde la API de REX (PARTE DE CATALOGOS)
 		/// </summary>
 		/// <param name="Token"></param>
 		/// <returns></returns>
@@ -731,7 +872,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 			List<CatalogoRex> relaciones = new List<CatalogoRex>();
 			string contents;
 			var client = new HttpClient();
-			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoRelaciones + "?detalle=True");
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoRelaciones + "?detalle=True&pagina=0");
 			request.Headers.Add("Authorization", "Token " + Token);
 			var content = new StringContent(string.Empty);
 			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -744,8 +885,12 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Consulta finalizada correctamente...");
 				// Deserializar el contenido JSON en un objeto de tipo RootObjectCatalogo
-				var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
-				relaciones = rootObjectCatalogo.objetos;
+
+				//var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
+				//relaciones = rootObjectCatalogo.objetos;
+
+				relaciones = JsonConvert.DeserializeObject<List<CatalogoRex>>(contents);
+
 				// Grabación de datos en SQL Server (Tabla de paso Catalogo)
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Regitrando información temporal de nrelaciones (vinculo familiar)...");
@@ -764,6 +909,15 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 						dynamicParameters.Add("@Valora", relacion.Valora);
 						dynamicParameters.Add("@Valorb", relacion.Valorb);
 						dynamicParameters.Add("@Valorc", relacion.Valorc);
+						dynamicParameters.Add("@Valord", relacion.Valord);
+						dynamicParameters.Add("@Valore", relacion.Valore);
+						dynamicParameters.Add("@Valorf", relacion.Valorf);
+						dynamicParameters.Add("@Valorg", relacion.Valorg);
+						dynamicParameters.Add("@Valorh", relacion.Valorh);
+						dynamicParameters.Add("@Valori", relacion.Valori);
+						dynamicParameters.Add("@Valorj", relacion.Valorj);
+						dynamicParameters.Add("@Valork", relacion.Valork);
+						dynamicParameters.Add("@Valorl", 0);
 						dynamicParameters.Add("@DatoAdic", relacion.DatoAdic);
 						dynamicParameters.Add("@Lista", relacion.Lista);
 						dynamicParameters.Add("@Habilitado", relacion.Habilitado);
@@ -783,6 +937,256 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 							resultadoExeSql.Estado = "ERROR";
 							Console.ForegroundColor = ConsoleColor.Red;
 							Console.WriteLine("Error al ingresar vínculo familiar a repositorio temporal : " + relacion.Nombre);
+						}
+					}
+				}
+				resultado.Estado = "OK";
+			}
+			else
+			{
+				resultado.Estado = response.StatusCode.ToString();
+			}
+			return resultado;
+		}
+
+		/// <summary>
+		/// Método para cargar las causales de termino de contrato desde la API de REX (PARTE DE CATALOGOS)
+		/// </summary>
+		/// <param name="Token"></param>
+		/// <returns></returns>
+		public async Task<Resultado> CargaTerminosContrato(string Token)
+		{
+			// Obtención de datos desde REX mediante llamada API 
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			Console.WriteLine("Consultando datos de causales de termino de conmtrato (finiquitos)...");
+			Resultado resultado = new Resultado();
+			ResultadoExeSql resultadoExeSql = new ResultadoExeSql();
+			List<CatalogoRex> causalesTerminoContrato = new List<CatalogoRex>();
+			string contents;
+			var client = new HttpClient();
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoCausalesTerminoContrato + "?detalle=True&pagina=0");
+			request.Headers.Add("Authorization", "Token " + Token);
+			var content = new StringContent(string.Empty);
+			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+			request.Content = content;
+			var response = await client.SendAsync(request);
+			contents = await response.Content.ReadAsStringAsync();
+
+			if (response.StatusCode.ToString().Equals("OK"))
+			{
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Consulta finalizada correctamente...");
+				// Deserializar el contenido JSON en un objeto de tipo RootObjectCatalogo
+
+				//var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
+				//relaciones = rootObjectCatalogo.objetos;
+
+				causalesTerminoContrato = JsonConvert.DeserializeObject<List<CatalogoRex>>(contents);
+
+				// Grabación de datos en SQL Server (Tabla de paso Catalogo)
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Regitrando información temporal de causales de termino de contrato (finiquitos)...");
+				string spName = "SP_REX_INSERTA_CATALOGO";
+				foreach (var causalTerminoContrato in causalesTerminoContrato)
+				{
+					using (var conexion = new SqlConnection(_connectionString))
+					{
+						DynamicParameters dynamicParameters = new DynamicParameters();
+						// Adding Input parameters.
+						dynamicParameters.Add("@Id", causalTerminoContrato.Id);
+						dynamicParameters.Add("@Fecha_Creacion", causalTerminoContrato.Fecha_Creacion);
+						dynamicParameters.Add("@Fecha_Modificacion", causalTerminoContrato.Fecha_Modificacion);
+						dynamicParameters.Add("@Item", causalTerminoContrato.Item);
+						dynamicParameters.Add("@Nombre", causalTerminoContrato.Nombre);
+						dynamicParameters.Add("@Valora", causalTerminoContrato.Valora);
+						dynamicParameters.Add("@Valorb", causalTerminoContrato.Valorb);
+						dynamicParameters.Add("@Valorc", causalTerminoContrato.Valorc);
+						dynamicParameters.Add("@Valord", causalTerminoContrato.Valord);
+						dynamicParameters.Add("@Valore", causalTerminoContrato.Valore);
+						dynamicParameters.Add("@Valorf", causalTerminoContrato.Valorf);
+						dynamicParameters.Add("@Valorg", causalTerminoContrato.Valorg);
+						dynamicParameters.Add("@Valorh", causalTerminoContrato.Valorh);
+						dynamicParameters.Add("@Valori", causalTerminoContrato.Valori);
+						dynamicParameters.Add("@Valorj", causalTerminoContrato.Valorj);
+						dynamicParameters.Add("@Valork", causalTerminoContrato.Valork);
+						dynamicParameters.Add("@Valorl", 0);
+						dynamicParameters.Add("@DatoAdic", causalTerminoContrato.DatoAdic);
+						dynamicParameters.Add("@Lista", causalTerminoContrato.Lista);
+						dynamicParameters.Add("@Habilitado", causalTerminoContrato.Habilitado);
+						dynamicParameters.Add("@Reservado", causalTerminoContrato.Reservado);
+						// Adding Output parameter.
+						dynamicParameters.Add("@CANTIDAD", DbType.Int32, direction: ParameterDirection.Output);
+						conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+						resultadoExeSql.Cantidad = dynamicParameters.Get<int>("@CANTIDAD");
+						if (resultadoExeSql.Cantidad > 0)
+						{
+							resultadoExeSql.Estado = "OK";
+							Console.ForegroundColor = ConsoleColor.Green;
+							Console.WriteLine("Causal termino de contarto creada correctamente en repositorio temporal : " + causalTerminoContrato.Nombre);
+						}
+						else
+						{
+							resultadoExeSql.Estado = "ERROR";
+							Console.ForegroundColor = ConsoleColor.Red;
+							Console.WriteLine("Error al ingresar causal de termino de contrato a repositorio temporal : " + causalTerminoContrato.Nombre);
+						}
+					}
+				}
+				resultado.Estado = "OK";
+			}
+			else
+			{
+				resultado.Estado = response.StatusCode.ToString();
+			}
+			return resultado;
+		}
+
+		/// <summary>
+		/// Método para cargar los tipso de contrato desde la API de REX (PARTE DE CONSTANTES)
+		/// </summary>
+		/// <param name="Token"></param>
+		/// <returns></returns>
+		public async Task<Resultado> CargaTiposContrato(string Token)
+		{
+			// Obtención de datos desde REX mediante llamada API 
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			Console.WriteLine("Consultando datos de tipos de contrato...");
+			Resultado resultado = new Resultado();
+			ResultadoExeSql resultadoExeSql = new ResultadoExeSql();
+			List<ConstanteRex> tiposContrato = new List<ConstanteRex>();
+			string contents;
+			var client = new HttpClient();
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/aliados/constantes/" + _miConfiguracion.ConstanteTipoContrato );
+			request.Headers.Add("Authorization", "Token " + Token);
+			var content = new StringContent(string.Empty);
+			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+			request.Content = content;
+			var response = await client.SendAsync(request);
+			contents = await response.Content.ReadAsStringAsync();
+
+			if (response.StatusCode.ToString().Equals("OK"))
+			{
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Consulta finalizada correctamente...");
+				// Deserializar el contenido JSON en un objeto de tipo RootObjectCatalogo
+
+				//var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
+				//relaciones = rootObjectCatalogo.objetos;
+
+				var diccionario = JsonConvert.DeserializeObject<Dictionary<string, string>>(contents);
+				tiposContrato = diccionario.Select(kvp => new ConstanteRex
+				{
+					Item = kvp.Key,
+					Nombre = kvp.Value
+				}).ToList();
+
+				// Grabación de datos en SQL Server (Tabla de paso Catalogo)
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Regitrando información temporal de tipos de contrato...");
+				string spName = "SP_REX_INSERTA_CONSTANTE";
+				foreach (var tipoContrato in tiposContrato)
+				{
+					using (var conexion = new SqlConnection(_connectionString))
+					{
+						DynamicParameters dynamicParameters = new DynamicParameters();
+						// Adding Input parameters.
+						dynamicParameters.Add("@Item", tipoContrato.Item);
+						dynamicParameters.Add("@Nombre", tipoContrato.Nombre);
+						dynamicParameters.Add("@Lista", _miConfiguracion.ConstanteTipoContrato);
+						// Adding Output parameter.
+						dynamicParameters.Add("@CANTIDAD", DbType.Int32, direction: ParameterDirection.Output);
+						conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+						resultadoExeSql.Cantidad = dynamicParameters.Get<int>("@CANTIDAD");
+						if (resultadoExeSql.Cantidad > 0)
+						{
+							resultadoExeSql.Estado = "OK";
+							Console.ForegroundColor = ConsoleColor.Green;
+							Console.WriteLine("Tipo de contrato creado correctamente en repositorio temporal : " + tipoContrato.Nombre);
+						}
+						else
+						{
+							resultadoExeSql.Estado = "ERROR";
+							Console.ForegroundColor = ConsoleColor.Red;
+							Console.WriteLine("Error al ingresar tipo de contrato a repositorio temporal : " + tipoContrato.Nombre);
+						}
+					}
+				}
+				resultado.Estado = "OK";
+			}
+			else
+			{
+				resultado.Estado = response.StatusCode.ToString();
+			}
+			return resultado;
+		}
+
+		/// <summary>
+		/// Método para cargar los estados de contrato desde la API de REX (PARTE DE CONSTANTES)
+		/// </summary>
+		/// <param name="Token"></param>
+		/// <returns></returns>
+		public async Task<Resultado> CargaEstadosContrato(string Token)
+		{
+			// Obtención de datos desde REX mediante llamada API 
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			Console.WriteLine("Consultando datos de estados de contrato...");
+			Resultado resultado = new Resultado();
+			ResultadoExeSql resultadoExeSql = new ResultadoExeSql();
+			List<ConstanteRex> estadosContrato = new List<ConstanteRex>();
+			string contents;
+			var client = new HttpClient();
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/aliados/constantes/" + _miConfiguracion.ConstanteEstadoContrato);
+			request.Headers.Add("Authorization", "Token " + Token);
+			var content = new StringContent(string.Empty);
+			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+			request.Content = content;
+			var response = await client.SendAsync(request);
+			contents = await response.Content.ReadAsStringAsync();
+
+			if (response.StatusCode.ToString().Equals("OK"))
+			{
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Consulta finalizada correctamente...");
+				// Deserializar el contenido JSON en un objeto de tipo RootObjectCatalogo
+
+				//var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
+				//relaciones = rootObjectCatalogo.objetos;
+
+				var diccionario = JsonConvert.DeserializeObject<Dictionary<string, string>>(contents);
+				estadosContrato = diccionario.Select(kvp => new ConstanteRex
+				{
+					Item = kvp.Key,
+					Nombre = kvp.Value
+				}).ToList();
+
+				// Grabación de datos en SQL Server (Tabla de paso Catalogo)
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Regitrando información temporal de estados de contrato...");
+				string spName = "SP_REX_INSERTA_CONSTANTE";
+				foreach (var estadoContrato in estadosContrato)
+				{
+					using (var conexion = new SqlConnection(_connectionString))
+					{
+						DynamicParameters dynamicParameters = new DynamicParameters();
+						// Adding Input parameters.
+						dynamicParameters.Add("@Item", estadoContrato.Item);
+						dynamicParameters.Add("@Nombre", estadoContrato.Nombre);
+						dynamicParameters.Add("@Lista", _miConfiguracion.ConstanteEstadoContrato);
+						// Adding Output parameter.
+						dynamicParameters.Add("@CANTIDAD", DbType.Int32, direction: ParameterDirection.Output);
+						conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+						resultadoExeSql.Cantidad = dynamicParameters.Get<int>("@CANTIDAD");
+						if (resultadoExeSql.Cantidad > 0)
+						{
+							resultadoExeSql.Estado = "OK";
+							Console.ForegroundColor = ConsoleColor.Green;
+							Console.WriteLine("Estado de contrato creado correctamente en repositorio temporal : " + estadoContrato.Nombre);
+						}
+						else
+						{
+							resultadoExeSql.Estado = "ERROR";
+							Console.ForegroundColor = ConsoleColor.Red;
+							Console.WriteLine("Error al ingresar estado de contrato a repositorio temporal : " + estadoContrato.Nombre);
 						}
 					}
 				}
@@ -866,11 +1270,563 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 			return resultado;
 		}
 
-		
+
 		///**************************************************************************************************///
 		///**************************************************************************************************///
 		///**************************************************************************************************///
 
+		/// <summary>
+		/// Carga registro de cargos liquidacion desde la API de REX 
+		/// </summary>
+		/// <param name="Token"></param>
+		/// <returns></returns>
+		public async Task<Resultado> CargaCargosLiquidacion(string Token)
+		{
+			// Obtención de datos desde REX mediante llamada API 
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			Console.WriteLine("Consultando datos de cargos liquidacion...");
+			Resultado resultado = new Resultado();
+			ResultadoExeSql resultadoExeSql = new ResultadoExeSql();
+			List<CatalogoRex> cargosLiquidacion = new List<CatalogoRex>();
+			string contents;
+			var client = new HttpClient();
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoCargo + "?detalle=True&pagina=0");
+			request.Headers.Add("Authorization", "Token " + Token);
+			//request.Headers.Add("Cookie", "csrftoken=46N0xuXLsR3JIYUUc1K5wMgcR78ipD1k");
+			var content = new StringContent(string.Empty);
+			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+			request.Content = content;
+			var response = await client.SendAsync(request);
+			contents = await response.Content.ReadAsStringAsync();
+
+			if (response.StatusCode.ToString().Equals("OK"))
+			{
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Consulta finalizada correctamente...");
+				// Deserializar el contenido JSON en un objeto de tipo RootObjectCargo
+
+				//var rootObjectCargo = JsonConvert.DeserializeObject<RootObjectCargo>(contents);
+				//cargosLiquidacion = rootObjectCargo.objetos;
+
+				cargosLiquidacion = JsonConvert.DeserializeObject<List<CatalogoRex>>(contents);
+
+				// Grabación de datos en SQL Server (Tabla de paso catalogo)
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Regitrando información temporal de cargos liquidacion...");
+				string spName = "SP_REX_INSERTA_CATALOGO";
+				foreach (var cargoLiquidacion in cargosLiquidacion)
+				{
+					using (var conexion = new SqlConnection(_connectionString))
+					{
+						DynamicParameters dynamicParameters = new DynamicParameters();
+						// Adding Input parameters.
+						dynamicParameters.Add("@Id", cargoLiquidacion.Id);
+						dynamicParameters.Add("@Fecha_Creacion", cargoLiquidacion.Fecha_Creacion);
+						dynamicParameters.Add("@Fecha_Modificacion", cargoLiquidacion.Fecha_Modificacion);
+						dynamicParameters.Add("@Item", cargoLiquidacion.Item);
+						dynamicParameters.Add("@Nombre", cargoLiquidacion.Nombre);
+						dynamicParameters.Add("@Valora", cargoLiquidacion.Valora);
+						dynamicParameters.Add("@Valorb", cargoLiquidacion.Valorb);
+						dynamicParameters.Add("@Valorc", cargoLiquidacion.Valorc);
+						dynamicParameters.Add("@Valord", cargoLiquidacion.Valord);
+						dynamicParameters.Add("@Valore", cargoLiquidacion.Valore);
+						dynamicParameters.Add("@Valorf", cargoLiquidacion.Valorf);
+						dynamicParameters.Add("@Valorg", cargoLiquidacion.Valorg);
+						dynamicParameters.Add("@Valorh", cargoLiquidacion.Valorh);
+						dynamicParameters.Add("@Valori", cargoLiquidacion.Valori);
+						dynamicParameters.Add("@Valorj", cargoLiquidacion.Valorj);
+						dynamicParameters.Add("@Valork", cargoLiquidacion.Valork);
+						dynamicParameters.Add("@Valorl", cargoLiquidacion.Valorl);
+						dynamicParameters.Add("@DatoAdic", cargoLiquidacion.DatoAdic);
+						dynamicParameters.Add("@Lista", "cargoLiq");
+						dynamicParameters.Add("@Habilitado", true);
+						dynamicParameters.Add("@Reservado", false);
+						// Adding Output parameter.
+						dynamicParameters.Add("@CANTIDAD", DbType.Int32, direction: ParameterDirection.Output);
+						conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+						resultadoExeSql.Cantidad = dynamicParameters.Get<int>("@CANTIDAD");
+						if (resultadoExeSql.Cantidad > 0)
+						{
+							resultadoExeSql.Estado = "OK";
+							Console.ForegroundColor = ConsoleColor.Green;
+							Console.WriteLine("Registro de cargo liquidación creado correctamente en repositorio temporal : " + cargoLiquidacion.Nombre);
+						}
+						else
+						{
+							resultadoExeSql.Estado = "ERROR";
+							Console.ForegroundColor = ConsoleColor.Red;
+							Console.WriteLine("Error al registrar cargo liquidación en repositorio temporal : " + cargoLiquidacion.Nombre);
+						}
+					}
+				}
+				resultado.Estado = "OK";
+			}
+			else
+			{
+				resultado.Estado = response.StatusCode.ToString();
+			}
+			return resultado;
+		}
+
+		/// <summary>
+		/// Método para cargar los cargos genericos unificados desde la API de REX (PARTE DE CATALOGOS)
+		/// </summary>
+		/// <param name="Token"></param>
+		/// <returns></returns>
+		public async Task<Resultado> CargaCargosGenericos(string Token)
+		{
+			// Obtención de datos desde REX mediante llamada API 
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			Console.WriteLine("Consultando datos de cargos genericos...");
+			Resultado resultado = new Resultado();
+			ResultadoExeSql resultadoExeSql = new ResultadoExeSql();
+			List<CatalogoRex> cargosGenericos = new List<CatalogoRex>();
+			string contents;
+			var client = new HttpClient();
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoCargoGenericoUnificado + "?detalle=True&pagina=0");
+			request.Headers.Add("Authorization", "Token " + Token);
+			var content = new StringContent(string.Empty);
+			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+			request.Content = content;
+			var response = await client.SendAsync(request);
+			contents = await response.Content.ReadAsStringAsync();
+
+			if (response.StatusCode.ToString().Equals("OK"))
+			{
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Consulta finalizada correctamente...");
+				// Deserializar el contenido JSON en un objeto de tipo RootObjectCatalogo
+
+				//var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
+				//cargosGenericos = rootObjectCatalogo.objetos;
+
+				cargosGenericos = JsonConvert.DeserializeObject<List<CatalogoRex>>(contents);
+
+				// Grabación de datos en SQL Server (Tabla de paso catalogo)
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Regitrando información temporal de cargos genericos...");
+				string spName = "SP_REX_INSERTA_CATALOGO";
+				foreach (var cargoGenerico in cargosGenericos)
+				{
+					using (var conexion = new SqlConnection(_connectionString))
+					{
+						DynamicParameters dynamicParameters = new DynamicParameters();
+						// Adding Input parameters.
+						dynamicParameters.Add("@Id", cargoGenerico.Id);
+						dynamicParameters.Add("@Fecha_Creacion", cargoGenerico.Fecha_Creacion);
+						dynamicParameters.Add("@Fecha_Modificacion", cargoGenerico.Fecha_Modificacion);
+						dynamicParameters.Add("@Item", cargoGenerico.Item);
+						dynamicParameters.Add("@Nombre", cargoGenerico.Nombre);
+						dynamicParameters.Add("@Valora", cargoGenerico.Valora);
+						dynamicParameters.Add("@Valorb", cargoGenerico.Valorb);
+						dynamicParameters.Add("@Valorc", cargoGenerico.Valorc);
+						dynamicParameters.Add("@Valord", cargoGenerico.Valord);
+						dynamicParameters.Add("@Valore", cargoGenerico.Valore);
+						dynamicParameters.Add("@Valorf", cargoGenerico.Valorf);
+						dynamicParameters.Add("@Valorg", cargoGenerico.Valorg);
+						dynamicParameters.Add("@Valorh", cargoGenerico.Valorh);
+						dynamicParameters.Add("@Valori", cargoGenerico.Valori);
+						dynamicParameters.Add("@Valorj", cargoGenerico.Valorj);
+						dynamicParameters.Add("@Valork", cargoGenerico.Valork);
+						dynamicParameters.Add("@Valorl", cargoGenerico.Valorl);
+						dynamicParameters.Add("@DatoAdic", cargoGenerico.DatoAdic);
+						dynamicParameters.Add("@Lista", cargoGenerico.Lista);
+						dynamicParameters.Add("@Habilitado", cargoGenerico.Habilitado);
+						dynamicParameters.Add("@Reservado", cargoGenerico.Reservado);
+						// Adding Output parameter.
+						dynamicParameters.Add("@CANTIDAD", DbType.Int32, direction: ParameterDirection.Output);
+						conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+						resultadoExeSql.Cantidad = dynamicParameters.Get<int>("@CANTIDAD");
+						if (resultadoExeSql.Cantidad > 0)
+						{
+							resultadoExeSql.Estado = "OK";
+							Console.ForegroundColor = ConsoleColor.Green;
+							Console.WriteLine("Cargo generico creado correctamente en repositorio temporal : " + cargoGenerico.Nombre);
+						}
+						else
+						{
+							resultadoExeSql.Estado = "ERROR";
+							Console.ForegroundColor = ConsoleColor.Red;
+							Console.WriteLine("Error al ingresar cargo generico a repositorio temporal : " + cargoGenerico.Nombre);
+						}
+					}
+				}
+				resultado.Estado = "OK";
+			}
+			else
+			{
+				resultado.Estado = response.StatusCode.ToString();
+			}
+			return resultado;
+		}
+
+		/// <summary>
+		/// Método para cargar las referencias 1 desde la API de REX (PARTE DE CATALOGOS)
+		/// </summary>
+		/// <param name="Token"></param>
+		/// <returns></returns>
+		public async Task<Resultado> CargaReferencias1(string Token)
+		{
+			// Obtención de datos desde REX mediante llamada API 
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			Console.WriteLine("Consultando datos de referencias 1...");
+			Resultado resultado = new Resultado();
+			ResultadoExeSql resultadoExeSql = new ResultadoExeSql();
+			List<CatalogoRex> referencias1 = new List<CatalogoRex>();
+			string contents;
+			var client = new HttpClient();
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoReferencia1 + "?detalle=True&pagina=0");
+			request.Headers.Add("Authorization", "Token " + Token);
+			var content = new StringContent(string.Empty);
+			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+			request.Content = content;
+			var response = await client.SendAsync(request);
+			contents = await response.Content.ReadAsStringAsync();
+
+			if (response.StatusCode.ToString().Equals("OK"))
+			{
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Consulta finalizada correctamente...");
+				// Deserializar el contenido JSON en un objeto de tipo RootObjectCatalogo
+
+				//var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
+				//cargosGenericos = rootObjectCatalogo.objetos;
+
+				referencias1 = JsonConvert.DeserializeObject<List<CatalogoRex>>(contents);
+
+				// Grabación de datos en SQL Server (Tabla de paso catalogo)
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Regitrando información temporal de refrencias 1...");
+				string spName = "SP_REX_INSERTA_CATALOGO";
+				foreach (var referencia1 in referencias1)
+				{
+					using (var conexion = new SqlConnection(_connectionString))
+					{
+						DynamicParameters dynamicParameters = new DynamicParameters();
+						// Adding Input parameters.
+						dynamicParameters.Add("@Id", referencia1.Id);
+						dynamicParameters.Add("@Fecha_Creacion", referencia1.Fecha_Creacion);
+						dynamicParameters.Add("@Fecha_Modificacion", referencia1.Fecha_Modificacion);
+						dynamicParameters.Add("@Item", referencia1.Item);
+						dynamicParameters.Add("@Nombre", referencia1.Nombre);
+						dynamicParameters.Add("@Valora", referencia1.Valora);
+						dynamicParameters.Add("@Valorb", referencia1.Valorb);
+						dynamicParameters.Add("@Valorc", referencia1.Valorc);
+						dynamicParameters.Add("@Valord", referencia1.Valord);
+						dynamicParameters.Add("@Valore", referencia1.Valore);
+						dynamicParameters.Add("@Valorf", referencia1.Valorf);
+						dynamicParameters.Add("@Valorg", referencia1.Valorg);
+						dynamicParameters.Add("@Valorh", referencia1.Valorh);
+						dynamicParameters.Add("@Valori", referencia1.Valori);
+						dynamicParameters.Add("@Valorj", referencia1.Valorj);
+						dynamicParameters.Add("@Valork", referencia1.Valork);
+						dynamicParameters.Add("@Valorl", referencia1.Valorl);
+						dynamicParameters.Add("@DatoAdic", referencia1.DatoAdic);
+						dynamicParameters.Add("@Lista", referencia1.Lista);
+						dynamicParameters.Add("@Habilitado", referencia1.Habilitado);
+						dynamicParameters.Add("@Reservado", referencia1.Reservado);
+						// Adding Output parameter.
+						dynamicParameters.Add("@CANTIDAD", DbType.Int32, direction: ParameterDirection.Output);
+						conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+						resultadoExeSql.Cantidad = dynamicParameters.Get<int>("@CANTIDAD");
+						if (resultadoExeSql.Cantidad > 0)
+						{
+							resultadoExeSql.Estado = "OK";
+							Console.ForegroundColor = ConsoleColor.Green;
+							Console.WriteLine("Referencia 1 creada correctamente en repositorio temporal : " + referencia1.Nombre);
+						}
+						else
+						{
+							resultadoExeSql.Estado = "ERROR";
+							Console.ForegroundColor = ConsoleColor.Red;
+							Console.WriteLine("Error al ingresar refrencia 1 a repositorio temporal : " + referencia1.Nombre);
+						}
+					}
+				}
+				resultado.Estado = "OK";
+			}
+			else
+			{
+				resultado.Estado = response.StatusCode.ToString();
+			}
+			return resultado;
+		}
+
+		/// <summary>
+		/// Método para cargar las referencias 2 desde la API de REX (PARTE DE CATALOGOS)
+		/// </summary>
+		/// <param name="Token"></param>
+		/// <returns></returns>
+		public async Task<Resultado> CargaReferencias2(string Token)
+		{
+			// Obtención de datos desde REX mediante llamada API 
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			Console.WriteLine("Consultando datos de referencias 2...");
+			Resultado resultado = new Resultado();
+			ResultadoExeSql resultadoExeSql = new ResultadoExeSql();
+			List<CatalogoRex> referencias2 = new List<CatalogoRex>();
+			string contents;
+			var client = new HttpClient();
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoReferencia2 + "?detalle=True&pagina=0");
+			request.Headers.Add("Authorization", "Token " + Token);
+			var content = new StringContent(string.Empty);
+			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+			request.Content = content;
+			var response = await client.SendAsync(request);
+			contents = await response.Content.ReadAsStringAsync();
+
+			if (response.StatusCode.ToString().Equals("OK"))
+			{
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Consulta finalizada correctamente...");
+				// Deserializar el contenido JSON en un objeto de tipo RootObjectCatalogo
+
+				//var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
+				//cargosGenericos = rootObjectCatalogo.objetos;
+
+				referencias2 = JsonConvert.DeserializeObject<List<CatalogoRex>>(contents);
+
+				// Grabación de datos en SQL Server (Tabla de paso catalogo)
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Regitrando información temporal de refrencias 2...");
+				string spName = "SP_REX_INSERTA_CATALOGO";
+				foreach (var referencia2 in referencias2)
+				{
+					using (var conexion = new SqlConnection(_connectionString))
+					{
+						DynamicParameters dynamicParameters = new DynamicParameters();
+						// Adding Input parameters.
+						dynamicParameters.Add("@Id", referencia2.Id);
+						dynamicParameters.Add("@Fecha_Creacion", referencia2.Fecha_Creacion);
+						dynamicParameters.Add("@Fecha_Modificacion", referencia2.Fecha_Modificacion);
+						dynamicParameters.Add("@Item", referencia2.Item);
+						dynamicParameters.Add("@Nombre", referencia2.Nombre);
+						dynamicParameters.Add("@Valora", referencia2.Valora);
+						dynamicParameters.Add("@Valorb", referencia2.Valorb);
+						dynamicParameters.Add("@Valorc", referencia2.Valorc);
+						dynamicParameters.Add("@Valord", referencia2.Valord);
+						dynamicParameters.Add("@Valore", referencia2.Valore);
+						dynamicParameters.Add("@Valorf", referencia2.Valorf);
+						dynamicParameters.Add("@Valorg", referencia2.Valorg);
+						dynamicParameters.Add("@Valorh", referencia2.Valorh);
+						dynamicParameters.Add("@Valori", referencia2.Valori);
+						dynamicParameters.Add("@Valorj", referencia2.Valorj);
+						dynamicParameters.Add("@Valork", referencia2.Valork);
+						dynamicParameters.Add("@Valorl", referencia2.Valorl);
+						dynamicParameters.Add("@DatoAdic", referencia2.DatoAdic);
+						dynamicParameters.Add("@Lista", referencia2.Lista);
+						dynamicParameters.Add("@Habilitado", referencia2.Habilitado);
+						dynamicParameters.Add("@Reservado", referencia2.Reservado);
+						// Adding Output parameter.
+						dynamicParameters.Add("@CANTIDAD", DbType.Int32, direction: ParameterDirection.Output);
+						conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+						resultadoExeSql.Cantidad = dynamicParameters.Get<int>("@CANTIDAD");
+						if (resultadoExeSql.Cantidad > 0)
+						{
+							resultadoExeSql.Estado = "OK";
+							Console.ForegroundColor = ConsoleColor.Green;
+							Console.WriteLine("Referencia 2 creada correctamente en repositorio temporal : " + referencia2.Nombre);
+						}
+						else
+						{
+							resultadoExeSql.Estado = "ERROR";
+							Console.ForegroundColor = ConsoleColor.Red;
+							Console.WriteLine("Error al ingresar refrencia 2 a repositorio temporal : " + referencia2.Nombre);
+						}
+					}
+				}
+				resultado.Estado = "OK";
+			}
+			else
+			{
+				resultado.Estado = response.StatusCode.ToString();
+			}
+			return resultado;
+		}
+
+		/// <summary>
+		/// Método para cargar los feriados desde la API de REX (PARTE DE CATALOGOS)
+		/// </summary>
+		/// <param name="Token"></param>
+		/// <returns></returns>
+		public async Task<Resultado> CargaFeriados(string Token)
+		{
+			// Obtención de datos desde REX mediante llamada API 
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			Console.WriteLine("Consultando datos de feriados...");
+			Resultado resultado = new Resultado();
+			ResultadoExeSql resultadoExeSql = new ResultadoExeSql();
+			List<CatalogoRex> feriados = new List<CatalogoRex>();
+			string contents;
+			var client = new HttpClient();
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoFeriados + "?detalle=True&pagina=0");
+			request.Headers.Add("Authorization", "Token " + Token);
+			var content = new StringContent(string.Empty);
+			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+			request.Content = content;
+			var response = await client.SendAsync(request);
+			contents = await response.Content.ReadAsStringAsync();
+
+			if (response.StatusCode.ToString().Equals("OK"))
+			{
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Consulta finalizada correctamente...");
+				// Deserializar el contenido JSON en un objeto de tipo RootObjectCatalogo
+
+				//var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
+				//cargosGenericos = rootObjectCatalogo.objetos;
+
+				feriados = JsonConvert.DeserializeObject<List<CatalogoRex>>(contents);
+
+				// Grabación de datos en SQL Server (Tabla de paso catalogo)
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Regitrando información temporal de feriados...");
+				string spName = "SP_REX_INSERTA_CATALOGO";
+				foreach (var feriado in feriados)
+				{
+					using (var conexion = new SqlConnection(_connectionString))
+					{
+						DynamicParameters dynamicParameters = new DynamicParameters();
+						// Adding Input parameters.
+						dynamicParameters.Add("@Id", feriado.Id);
+						dynamicParameters.Add("@Fecha_Creacion", feriado.Fecha_Creacion);
+						dynamicParameters.Add("@Fecha_Modificacion", feriado.Fecha_Modificacion);
+						dynamicParameters.Add("@Item", feriado.Item);
+						dynamicParameters.Add("@Nombre", feriado.Nombre);
+						dynamicParameters.Add("@Valora", feriado.Valora);
+						dynamicParameters.Add("@Valorb", feriado.Valorb);
+						dynamicParameters.Add("@Valorc", feriado.Valorc);
+						dynamicParameters.Add("@Valord", feriado.Valord);
+						dynamicParameters.Add("@Valore", feriado.Valore);
+						dynamicParameters.Add("@Valorf", feriado.Valorf);
+						dynamicParameters.Add("@Valorg", feriado.Valorg);
+						dynamicParameters.Add("@Valorh", feriado.Valorh);
+						dynamicParameters.Add("@Valori", feriado.Valori);
+						dynamicParameters.Add("@Valorj", feriado.Valorj);
+						dynamicParameters.Add("@Valork", feriado.Valork);
+						dynamicParameters.Add("@Valorl", feriado.Valorl);
+						dynamicParameters.Add("@DatoAdic", feriado.DatoAdic);
+						dynamicParameters.Add("@Lista", feriado.Lista);
+						dynamicParameters.Add("@Habilitado", feriado.Habilitado);
+						dynamicParameters.Add("@Reservado", feriado.Reservado);
+						// Adding Output parameter.
+						dynamicParameters.Add("@CANTIDAD", DbType.Int32, direction: ParameterDirection.Output);
+						conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+						resultadoExeSql.Cantidad = dynamicParameters.Get<int>("@CANTIDAD");
+						if (resultadoExeSql.Cantidad > 0)
+						{
+							resultadoExeSql.Estado = "OK";
+							Console.ForegroundColor = ConsoleColor.Green;
+							Console.WriteLine("Feriado creado correctamente en repositorio temporal : " + feriado.Nombre);
+						}
+						else
+						{
+							resultadoExeSql.Estado = "ERROR";
+							Console.ForegroundColor = ConsoleColor.Red;
+							Console.WriteLine("Error al ingresar feriado a repositorio temporal : " + feriado.Nombre);
+						}
+					}
+				}
+				resultado.Estado = "OK";
+			}
+			else
+			{
+				resultado.Estado = response.StatusCode.ToString();
+			}
+			return resultado;
+		}
+
+		/// <summary>
+		/// Método para cargar los feriados movi desde la API de REX (PARTE DE CATALOGOS)
+		/// </summary>
+		/// <param name="Token"></param>
+		/// <returns></returns>
+		public async Task<Resultado> CargaFeriadosMovi(string Token)
+		{
+			// Obtención de datos desde REX mediante llamada API 
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			Console.WriteLine("Consultando datos de feriados movi...");
+			Resultado resultado = new Resultado();
+			ResultadoExeSql resultadoExeSql = new ResultadoExeSql();
+			List<CatalogoRex> feriadosMovi = new List<CatalogoRex>();
+			string contents;
+			var client = new HttpClient();
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoFeriadosMovi + "?detalle=True&pagina=0");
+			request.Headers.Add("Authorization", "Token " + Token);
+			var content = new StringContent(string.Empty);
+			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+			request.Content = content;
+			var response = await client.SendAsync(request);
+			contents = await response.Content.ReadAsStringAsync();
+
+			if (response.StatusCode.ToString().Equals("OK"))
+			{
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Consulta finalizada correctamente...");
+				// Deserializar el contenido JSON en un objeto de tipo RootObjectCatalogo
+
+				//var rootObjectCatalogo = JsonConvert.DeserializeObject<RootObjectCatalogo>(contents);
+				//cargosGenericos = rootObjectCatalogo.objetos;
+
+				feriadosMovi = JsonConvert.DeserializeObject<List<CatalogoRex>>(contents);
+
+				// Grabación de datos en SQL Server (Tabla de paso catalogo)
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Regitrando información temporal de feriados movi...");
+				string spName = "SP_REX_INSERTA_CATALOGO";
+				foreach (var feriadoMovi in feriadosMovi)
+				{
+					using (var conexion = new SqlConnection(_connectionString))
+					{
+						DynamicParameters dynamicParameters = new DynamicParameters();
+						// Adding Input parameters.
+						dynamicParameters.Add("@Id", feriadoMovi.Id);
+						dynamicParameters.Add("@Fecha_Creacion", feriadoMovi.Fecha_Creacion);
+						dynamicParameters.Add("@Fecha_Modificacion", feriadoMovi.Fecha_Modificacion);
+						dynamicParameters.Add("@Item", feriadoMovi.Item);
+						dynamicParameters.Add("@Nombre", feriadoMovi.Nombre);
+						dynamicParameters.Add("@Valora", feriadoMovi.Valora);
+						dynamicParameters.Add("@Valorb", feriadoMovi.Valorb);
+						dynamicParameters.Add("@Valorc", feriadoMovi.Valorc);
+						dynamicParameters.Add("@Valord", feriadoMovi.Valord);
+						dynamicParameters.Add("@Valore", feriadoMovi.Valore);
+						dynamicParameters.Add("@Valorf", feriadoMovi.Valorf);
+						dynamicParameters.Add("@Valorg", feriadoMovi.Valorg);
+						dynamicParameters.Add("@Valorh", feriadoMovi.Valorh);
+						dynamicParameters.Add("@Valori", feriadoMovi.Valori);
+						dynamicParameters.Add("@Valorj", feriadoMovi.Valorj);
+						dynamicParameters.Add("@Valork", feriadoMovi.Valork);
+						dynamicParameters.Add("@Valorl", feriadoMovi.Valorl);
+						dynamicParameters.Add("@DatoAdic", feriadoMovi.DatoAdic);
+						dynamicParameters.Add("@Lista", feriadoMovi.Lista);
+						dynamicParameters.Add("@Habilitado", feriadoMovi.Habilitado);
+						dynamicParameters.Add("@Reservado", feriadoMovi.Reservado);
+						// Adding Output parameter.
+						dynamicParameters.Add("@CANTIDAD", DbType.Int32, direction: ParameterDirection.Output);
+						conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+						resultadoExeSql.Cantidad = dynamicParameters.Get<int>("@CANTIDAD");
+						if (resultadoExeSql.Cantidad > 0)
+						{
+							resultadoExeSql.Estado = "OK";
+							Console.ForegroundColor = ConsoleColor.Green;
+							Console.WriteLine("Feriado movi creado correctamente en repositorio temporal : " + feriadoMovi.Nombre);
+						}
+						else
+						{
+							resultadoExeSql.Estado = "ERROR";
+							Console.ForegroundColor = ConsoleColor.Red;
+							Console.WriteLine("Error al ingresar feriado movi a repositorio temporal : " + feriadoMovi.Nombre);
+						}
+					}
+				}
+				resultado.Estado = "OK";
+			}
+			else
+			{
+				resultado.Estado = response.StatusCode.ToString();
+			}
+			return resultado;
+		}
 
 		/// <summary>
 		/// Carga los centros de costo desde la API de REX
@@ -1145,7 +2101,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 							if (response.StatusCode.ToString().Equals("OK"))
 							{
 								// Deserializar el contenido JSON en un objeto de tipo Contrato
-								var contrato = JsonConvert.DeserializeObject<Contrato>(contents);
+								var contrato = JsonConvert.DeserializeObject<ContratoRex>(contents);
 
 								// Aqui debemos enviar los datos de los contratos a repositorio temporal
 
@@ -1256,7 +2212,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 									dynamicParameters.Add("@Identificador_instrumento", contrato.Identificador_instrumento);
 									dynamicParameters.Add("@Reconocimiento_antiguedad", contrato.Reconocimiento_antiguedad);
 									dynamicParameters.Add("@Empleado", contrato.Empleado);
-									dynamicParameters.Add("@Contrat", contrato.Contrat);
+									dynamicParameters.Add("@Contrato", contrato.Contrato);
 									dynamicParameters.Add("@Borrador", contrato.Borrador);
 									dynamicParameters.Add("@Jefatura_directa", contrato.Jefatura_directa);
 									dynamicParameters.Add("@Jefatura_indirecta", contrato.Jefatura_indirecta);
@@ -1332,7 +2288,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 			Console.WriteLine("Consultando datos de contratos...");
 			Resultado resultado = new Resultado();
 			ResultadoExeSql resultadoExeSql = new ResultadoExeSql();
-			List<Contrato> listaContratos = new List<Contrato>();
+			List<ContratoRex> listaContratos = new List<ContratoRex>();
 			string contents;
 			var client = new HttpClient();
 			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v2/contratos?paginar=0&fechaCambio__gt=" + FechaCorte);
@@ -1462,7 +2418,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 						dynamicParameters.Add("@Identificador_instrumento", contrato.Identificador_instrumento);
 						dynamicParameters.Add("@Reconocimiento_antiguedad", contrato.Reconocimiento_antiguedad);
 						dynamicParameters.Add("@Empleado", contrato.Empleado);
-						dynamicParameters.Add("@Contrat", contrato.Contrat);
+						dynamicParameters.Add("@Contrato", contrato.Contrato);
 						dynamicParameters.Add("@Borrador", contrato.Borrador);
 						dynamicParameters.Add("@Jefatura_directa", contrato.Jefatura_directa);
 						dynamicParameters.Add("@Jefatura_indirecta", contrato.Jefatura_indirecta);
@@ -1597,81 +2553,6 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 			return resultado;
 		}
 
-		/// <summary>
-		/// Carga registro de cargo desde la API de REX 
-		/// </summary>
-		/// <param name="Token"></param>
-		/// <returns></returns>
-		public async Task<Resultado> CargaCargos(string Token)
-		{
-			// Obtención de datos desde REX mediante llamada API 
-			Console.ForegroundColor = ConsoleColor.Yellow;
-			Console.WriteLine("Consultando datos de cargos...");
-			Resultado resultado = new Resultado();
-			ResultadoExeSql resultadoExeSql = new ResultadoExeSql();
-			List<Cargo> cargos = new List<Cargo>();
-			string contents;
-			var client = new HttpClient();
-			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/catalogo/" + _miConfiguracion.CatalogoCargo + "?detalle=True");
-			request.Headers.Add("Authorization", "Token " + Token);
-			//request.Headers.Add("Cookie", "csrftoken=46N0xuXLsR3JIYUUc1K5wMgcR78ipD1k");
-			var content = new StringContent(string.Empty);
-			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-			request.Content = content;
-			var response = await client.SendAsync(request);
-			contents = await response.Content.ReadAsStringAsync();
-
-			if (response.StatusCode.ToString().Equals("OK"))
-			{
-				Console.ForegroundColor = ConsoleColor.Yellow;
-				Console.WriteLine("Consulta finalizada correctamente...");
-				// Deserializar el contenido JSON en un objeto de tipo RootObjectCargo
-				var rootObjectCargo = JsonConvert.DeserializeObject<RootObjectCargo>(contents);
-				cargos = rootObjectCargo.objetos;
-				// Grabación de datos en SQL Server (Tabla de paso cargos)
-				Console.ForegroundColor = ConsoleColor.Yellow;
-				Console.WriteLine("Regitrando información temporal de cargos...");
-				string spName = "SP_REX_INSERTA_CARGO";
-				foreach (var cargo in cargos)
-				{
-					using (var conexion = new SqlConnection(_connectionString))
-					{
-						DynamicParameters dynamicParameters = new DynamicParameters();
-						// Adding Input parameters.
-						dynamicParameters.Add("@Id", cargo.Id);
-						dynamicParameters.Add("@Fecha_Creacion", cargo.Fecha_Creacion);
-						dynamicParameters.Add("@Fecha_Modificacion", cargo.Fecha_Modificacion);
-						dynamicParameters.Add("@Item", cargo.Item);
-						dynamicParameters.Add("@Nombre", cargo.Nombre);
-						dynamicParameters.Add("@ValorA", cargo.ValorA);
-						dynamicParameters.Add("@ValorB", cargo.ValorB);
-						dynamicParameters.Add("@ValorC", cargo.ValorC);
-						dynamicParameters.Add("@DatoAdic", cargo.DatoAdic);
-						// Adding Output parameter.
-						dynamicParameters.Add("@CANTIDAD", DbType.Int32, direction: ParameterDirection.Output);
-						conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
-						resultadoExeSql.Cantidad = dynamicParameters.Get<int>("@CANTIDAD");
-						if (resultadoExeSql.Cantidad > 0)
-						{
-							resultadoExeSql.Estado = "OK";
-							Console.ForegroundColor = ConsoleColor.Green;
-							Console.WriteLine("Registro de cargo creado correctamente en repositorio temporal : " + cargo.Nombre);
-						}
-						else
-						{
-							resultadoExeSql.Estado = "ERROR";
-							Console.ForegroundColor = ConsoleColor.Red;
-							Console.WriteLine("Error al registrar cargo en repositorio temporal : " + cargo.Nombre);
-						}
-					}
-				}
-				resultado.Estado = "OK";
-			}
-			else
-			{
-				resultado.Estado = response.StatusCode.ToString();
-			}
-			return resultado;
-		}
+		
 	}
 }

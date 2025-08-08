@@ -8,6 +8,6 @@ namespace REX_Consumer_WorkerService.Models
 {
 	public  class RootObjectContratosRex
 	{
-		public List<Contrato> objetos { get; set; } = new List<Contrato>();
+		public List<ContratoRex> objetos { get; set; } = new List<ContratoRex>();
 	}
 }

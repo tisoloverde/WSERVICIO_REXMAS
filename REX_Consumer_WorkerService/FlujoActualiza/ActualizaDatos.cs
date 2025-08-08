@@ -159,6 +159,48 @@ namespace REX_Consumer_WorkerService.FlujoActualiza
 					Console.WriteLine("Actualizacion de vinculos familiares finalizada con errores.");
 				}
 
+
+				// Actualiza terminos de contrato
+				resultado = await ActualizacionTerminoContrato();
+				if (resultado.Estado == "OK")
+				{
+					Console.ForegroundColor = ConsoleColor.Green;
+					Console.WriteLine("Actualizacion de términos de contrato finalizada correctamente.");
+				}
+				else
+				{
+					Console.ForegroundColor = ConsoleColor.Red;
+					Console.WriteLine("Actualizacion de término de contratos finalizada con errores.");
+				}
+
+				// Actualiza tipos de contrato
+				resultado = await ActualizacionTipoContrato();
+				if (resultado.Estado == "OK")
+				{
+					Console.ForegroundColor = ConsoleColor.Green;
+					Console.WriteLine("Actualizacion de tipos de contrato finalizada correctamente.");
+				}
+				else
+				{
+					Console.ForegroundColor = ConsoleColor.Red;
+					Console.WriteLine("Actualizacion de tipos de contrato finalizada con errores.");
+				}
+
+				// Actualiza estados de contrato
+				resultado = await ActualizacionEstadoContrato();
+				if (resultado.Estado == "OK")
+				{
+					Console.ForegroundColor = ConsoleColor.Green;
+					Console.WriteLine("Actualizacion de estados de contrato finalizada correctamente.");
+				}
+				else
+				{
+					Console.ForegroundColor = ConsoleColor.Red;
+					Console.WriteLine("Actualizacion de estados de contrato finalizada con errores.");
+				}
+
+
+
 				// Actualiza profesiones
 				resultado = await ActualizacionProfesion();
 				if (resultado.Estado == "OK")
@@ -185,6 +227,58 @@ namespace REX_Consumer_WorkerService.FlujoActualiza
 					Console.WriteLine("Actualizacion de niveles ocupacionales finalizado con errores.");
 				}
 
+			}
+
+			//Actualizacion cargos liquidacion
+			resultado = await ActualizacionCargoLiquidacion();
+			if (resultado.Estado == "OK")
+			{
+				Console.ForegroundColor = ConsoleColor.Green;
+				Console.WriteLine("Actualizacion de cargos liquidacion finalizado correctamente.");
+			}
+			else
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("Actualizacion de cargos liquidacion finalizado con errores.");
+			}
+
+			//Actualizacion cargos genericos
+			resultado = await ActualizacionCargoGenerico();
+			if (resultado.Estado == "OK")
+			{
+				Console.ForegroundColor = ConsoleColor.Green;
+				Console.WriteLine("Actualizacion de cargos genericos finalizado correctamente.");
+			}
+			else
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("Actualizacion de cargos genericos finalizado con errores.");
+			}
+
+			//Actualizacion refrencias 1
+			resultado = await ActualizacionReferencia1();
+			if (resultado.Estado == "OK")
+			{
+				Console.ForegroundColor = ConsoleColor.Green;
+				Console.WriteLine("Actualizacion de referencias 1 finalizado correctamente.");
+			}
+			else
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("Actualizacion de referencias 1 finalizado con errores.");
+			}
+
+			//Actualizacion refrencias 2
+			resultado = await ActualizacionReferencia2();
+			if (resultado.Estado == "OK")
+			{
+				Console.ForegroundColor = ConsoleColor.Green;
+				Console.WriteLine("Actualizacion de referencias 2 finalizado correctamente.");
+			}
+			else
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("Actualizacion de referencias 2 finalizado con errores.");
 			}
 
 			//Actualizacion de centros de costo
@@ -214,6 +308,18 @@ namespace REX_Consumer_WorkerService.FlujoActualiza
 				Console.WriteLine("Actualizacion de colaboradores finalizado con errores.");
 			}
 
+			//Actualiza información de contratos de colaboradores
+			resultado = await ActualizacionContratoColaborador();
+			if (resultado.Estado == "OK")
+			{
+				Console.ForegroundColor = ConsoleColor.Green;
+				Console.WriteLine("Actualizacion de contratos de colaboradores finalizado correctamente.");
+			}
+			else
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("Actualizacion de contratos de colaboradores finalizado con errores.");
+			}
 
 			return resultado;
 
@@ -768,6 +874,185 @@ namespace REX_Consumer_WorkerService.FlujoActualiza
 			return resultado;
 		}
 
+		public async Task<Resultado> ActualizacionTerminoContrato()
+		{
+			Resultado resultado = new Resultado();
+			ResultadoExeSqlInsUpd resultadoExeSqlInsUpd = new ResultadoExeSqlInsUpd();
+			//RESCATAMOS DATOS DE TABLA DE TERMINOS DE CONTRATO DE REX (CATALOGO)
+			Console.ForegroundColor = ConsoleColor.Blue;
+			Console.WriteLine("Inicio carga de datos desde Paso términos de contarto REX...");
+			resultado.Estado = "OK";
+			using (var conexion = new SqlConnection(_connectionString))
+			{
+				var terminosContrato = conexion.Query<CatalogoRex>(@"
+										   							   SELECT * FROM REX_CATALOGO WHERE LISTA = 'finiquitos' ");
+
+				string spName = "SP_REXSQL_INS_UPD_TERMINO_CONTRATO";
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio actualización de datos de termino de contartos hacia SQL...");
+
+				foreach (var terminoContrato in terminosContrato)
+				{
+
+					DynamicParameters dynamicParameters = new DynamicParameters();
+					// Adding Input parameters.
+					dynamicParameters.Add("@ID", terminoContrato.Id);
+					dynamicParameters.Add("@ITEM", terminoContrato.Item);
+					dynamicParameters.Add("@NOMBRE", terminoContrato.Nombre);
+					if (terminoContrato.Habilitado)
+					{
+						dynamicParameters.Add("@VIGENCIA", "S");
+					}
+					else
+					{
+						dynamicParameters.Add("@VIGENCIA", "N");
+					}
+					// Adding Output parameter.
+					dynamicParameters.Add("@CANTIDAD_INS", DbType.Int32, direction: ParameterDirection.Output);
+					dynamicParameters.Add("@CANTIDAD_ACT", DbType.Int32, direction: ParameterDirection.Output);
+					conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+					resultadoExeSqlInsUpd.CantidadIns = dynamicParameters.Get<int>("@CANTIDAD_INS");
+					resultadoExeSqlInsUpd.CantidadUpd = dynamicParameters.Get<int>("@CANTIDAD_ACT");
+					if (resultadoExeSqlInsUpd.CantidadIns > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Término de contrato creado en base relacional : " + terminoContrato.Nombre);
+					}
+					else if (resultadoExeSqlInsUpd.CantidadUpd > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Término de contrato actualizado en base relacional : " + terminoContrato.Nombre);
+					}
+					else
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Error al actualizar o crear término de contrato : " + terminoContrato.Nombre);
+						resultado.Estado = "NO-OK";
+					}
+				}
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Termino de actualizacion de datos de términos de contrato hacia SQL...");
+			}
+
+			return resultado;
+		}
+
+		public async Task<Resultado> ActualizacionTipoContrato()
+		{
+			Resultado resultado = new Resultado();
+			ResultadoExeSqlInsUpd resultadoExeSqlInsUpd = new ResultadoExeSqlInsUpd();
+			//RESCATAMOS DATOS DE TABLA DE TIPOS DE CONTRATO DE REX (CONSTANTES)
+			Console.ForegroundColor = ConsoleColor.Blue;
+			Console.WriteLine("Inicio carga de datos desde Paso tipos de contrato REX...");
+			resultado.Estado = "OK";
+			using (var conexion = new SqlConnection(_connectionString))
+			{
+				var tiposContrato = conexion.Query<ConstanteRex>(@"
+										   							   SELECT * FROM REX_CONSTANTE WHERE LISTA = 'tipoCont' ");
+
+				string spName = "SP_REXSQL_INS_UPD_TIPO_CONTRATO";
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio actualización de datos de termino de contratos hacia SQL...");
+
+				foreach (var tipoContrato in tiposContrato)
+				{
+
+					DynamicParameters dynamicParameters = new DynamicParameters();
+					// Adding Input parameters.
+					dynamicParameters.Add("@ITEM", tipoContrato.Item);
+					dynamicParameters.Add("@NOMBRE", tipoContrato.Nombre);
+					dynamicParameters.Add("@VIGENCIA", "S");
+					// Adding Output parameter.
+					dynamicParameters.Add("@CANTIDAD_INS", DbType.Int32, direction: ParameterDirection.Output);
+					dynamicParameters.Add("@CANTIDAD_ACT", DbType.Int32, direction: ParameterDirection.Output);
+					conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+					resultadoExeSqlInsUpd.CantidadIns = dynamicParameters.Get<int>("@CANTIDAD_INS");
+					resultadoExeSqlInsUpd.CantidadUpd = dynamicParameters.Get<int>("@CANTIDAD_ACT");
+					if (resultadoExeSqlInsUpd.CantidadIns > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Tipo de contrato creado en base relacional : " + tipoContrato.Nombre);
+					}
+					else if (resultadoExeSqlInsUpd.CantidadUpd > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Tipo de contrato actualizado en base relacional : " + tipoContrato.Nombre);
+					}
+					else
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Error al actualizar o crear tipo de contrato : " + tipoContrato.Nombre);
+						resultado.Estado = "NO-OK";
+					}
+				}
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Termino de actualizacion de datos de tipos de contrato hacia SQL...");
+			}
+
+			return resultado;
+		}
+
+		public async Task<Resultado> ActualizacionEstadoContrato()
+		{
+			Resultado resultado = new Resultado();
+			ResultadoExeSqlInsUpd resultadoExeSqlInsUpd = new ResultadoExeSqlInsUpd();
+			//RESCATAMOS DATOS DE TABLA DE ESTADOS DE CONTRATO DE REX (CONSTANTES)
+			Console.ForegroundColor = ConsoleColor.Blue;
+			Console.WriteLine("Inicio carga de datos desde Paso estados de contrato REX...");
+			resultado.Estado = "OK";
+			using (var conexion = new SqlConnection(_connectionString))
+			{
+				var estadosContrato = conexion.Query<ConstanteRex>(@"
+										   							   SELECT * FROM REX_CONSTANTE WHERE LISTA = 'estado' ");
+
+				string spName = "SP_REXSQL_INS_UPD_ESTADO_CONTRATO";
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio actualización de datos de estado de contratos hacia SQL...");
+
+				foreach (var estadoContrato in estadosContrato)
+				{
+
+					DynamicParameters dynamicParameters = new DynamicParameters();
+					// Adding Input parameters.
+					dynamicParameters.Add("@ITEM", estadoContrato.Item);
+					dynamicParameters.Add("@NOMBRE", estadoContrato.Nombre);
+					dynamicParameters.Add("@VIGENCIA", "S");
+					// Adding Output parameter.
+					dynamicParameters.Add("@CANTIDAD_INS", DbType.Int32, direction: ParameterDirection.Output);
+					dynamicParameters.Add("@CANTIDAD_ACT", DbType.Int32, direction: ParameterDirection.Output);
+					conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+					resultadoExeSqlInsUpd.CantidadIns = dynamicParameters.Get<int>("@CANTIDAD_INS");
+					resultadoExeSqlInsUpd.CantidadUpd = dynamicParameters.Get<int>("@CANTIDAD_ACT");
+					if (resultadoExeSqlInsUpd.CantidadIns > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Estado de contrato creado en base relac|ional : " + estadoContrato.Nombre);
+					}
+					else if (resultadoExeSqlInsUpd.CantidadUpd > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Estado de contrato actualizado en base relacional : " + estadoContrato.Nombre);
+					}
+					else
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Error al actualizar o crear estado de contrato : " + estadoContrato.Nombre);
+						resultado.Estado = "NO-OK";
+					}
+				}
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Termino de actualizacion de datos de estados de contrato hacia SQL...");
+			}
+
+			return resultado;
+		}
+
 		public async Task<Resultado> ActualizacionProfesion()
 		{
 			Resultado resultado = new Resultado();
@@ -893,6 +1178,269 @@ namespace REX_Consumer_WorkerService.FlujoActualiza
 
 				Console.ForegroundColor = ConsoleColor.Blue;
 				Console.WriteLine("Termino de actualizacion de datos de niveles ocupacionales hacia SQL...");
+			}
+
+			return resultado;
+		}
+
+		public async Task<Resultado> ActualizacionCargoLiquidacion()
+		{
+			Resultado resultado = new Resultado();
+			ResultadoExeSqlInsUpd resultadoExeSqlInsUpd = new ResultadoExeSqlInsUpd();
+			//RESCATAMOS DATOS DE TABLA DE CARGOS LIQUIDACION DE REX
+			Console.ForegroundColor = ConsoleColor.Blue;
+			Console.WriteLine("Inicio carga de datos desde Paso cargos liquidación REX...");
+			resultado.Estado = "OK";
+			using (var conexion = new SqlConnection(_connectionString))
+			{
+				var cargosLiquidacion = conexion.Query<CatalogoRex>(@"
+									   							    SELECT * FROM REX_CATALOGO WHERE LISTA = 'cargoLiq' ");
+
+				string spName = "SP_REXSQL_INS_UPD_CARGO_LIQUIDACION";
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio actualización de datos de cargos liquidación hacia SQL...");
+
+				foreach (var cargoLiquidacion in cargosLiquidacion)
+				{
+
+					DynamicParameters dynamicParameters = new DynamicParameters();
+					// Adding Input parameters.
+					dynamicParameters.Add("@ID", cargoLiquidacion.Id);
+					dynamicParameters.Add("@ITEM", cargoLiquidacion.Item);
+					dynamicParameters.Add("@NOMBRE", cargoLiquidacion.Nombre);
+					if (cargoLiquidacion.Habilitado)
+					{
+						dynamicParameters.Add("@VIGENCIA", "S");
+					}
+					else
+					{
+						dynamicParameters.Add("@VIGENCIA", "N");
+					}
+					// Adding Output parameter.
+					dynamicParameters.Add("@CANTIDAD_INS", DbType.Int32, direction: ParameterDirection.Output);
+					dynamicParameters.Add("@CANTIDAD_ACT", DbType.Int32, direction: ParameterDirection.Output);
+					conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+					resultadoExeSqlInsUpd.CantidadIns = dynamicParameters.Get<int>("@CANTIDAD_INS");
+					resultadoExeSqlInsUpd.CantidadUpd = dynamicParameters.Get<int>("@CANTIDAD_ACT");
+					if (resultadoExeSqlInsUpd.CantidadIns > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Cargo liquidación creado en base relacional : " + cargoLiquidacion.Nombre);
+					}
+					else if (resultadoExeSqlInsUpd.CantidadUpd > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Cargo liquidación actualizado en base relacional : " + cargoLiquidacion.Nombre);
+					}
+					else
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Error al actualizar o crear cargo liquidación : " + cargoLiquidacion.Nombre);
+						resultado.Estado = "NO-OK";
+					}
+				}
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Termino de actualizacion de datos de cargos liquidacion hacia SQL...");
+			}
+
+			return resultado;
+		}
+
+		public async Task<Resultado> ActualizacionCargoGenerico()
+		{
+			Resultado resultado = new Resultado();
+			ResultadoExeSqlInsUpd resultadoExeSqlInsUpd = new ResultadoExeSqlInsUpd();
+			//RESCATAMOS DATOS DE TABLA DE CARGOS LIQUIDACION DE REX
+			Console.ForegroundColor = ConsoleColor.Blue;
+			Console.WriteLine("Inicio carga de datos desde paso cargos genericos REX...");
+			resultado.Estado = "OK";
+			using (var conexion = new SqlConnection(_connectionString))
+			{
+				var cargosGenerico = conexion.Query<CatalogoRex>(@"
+									   							 SELECT * FROM REX_CATALOGO WHERE LISTA = 'lta10' ");
+
+				string spName = "SP_REXSQL_INS_UPD_CARGO_GENERICO";
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio actualización de datos de cargos genericos hacia SQL...");
+
+				foreach (var cargoGenerico in cargosGenerico)
+				{
+
+					DynamicParameters dynamicParameters = new DynamicParameters();
+					// Adding Input parameters.
+					dynamicParameters.Add("@ID", cargoGenerico.Id);
+					dynamicParameters.Add("@ITEM", cargoGenerico.Item);
+					dynamicParameters.Add("@NOMBRE", cargoGenerico.Nombre);
+					if (cargoGenerico.Habilitado)
+					{
+						dynamicParameters.Add("@VIGENCIA", "S");
+					}
+					else
+					{
+						dynamicParameters.Add("@VIGENCIA", "N");
+					}
+					dynamicParameters.Add("@VALOR_A", cargoGenerico.Valora); 
+
+
+					// Adding Output parameter.
+					dynamicParameters.Add("@CANTIDAD_INS", DbType.Int32, direction: ParameterDirection.Output);
+					dynamicParameters.Add("@CANTIDAD_ACT", DbType.Int32, direction: ParameterDirection.Output);
+					conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+					resultadoExeSqlInsUpd.CantidadIns = dynamicParameters.Get<int>("@CANTIDAD_INS");
+					resultadoExeSqlInsUpd.CantidadUpd = dynamicParameters.Get<int>("@CANTIDAD_ACT");
+					if (resultadoExeSqlInsUpd.CantidadIns > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Cargo generico creado en base relacional : " + cargoGenerico.Nombre);
+					}
+					else if (resultadoExeSqlInsUpd.CantidadUpd > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Cargo generico actualizado en base relacional : " + cargoGenerico.Nombre);
+					}
+					else
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Error al actualizar o crear cargo generico : " + cargoGenerico.Nombre);
+						resultado.Estado = "NO-OK";
+					}
+				}
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Termino de actualizacion de datos de cargos genericos hacia SQL...");
+			}
+
+			return resultado;
+		}
+
+		public async Task<Resultado> ActualizacionReferencia1()
+		{
+			Resultado resultado = new Resultado();
+			ResultadoExeSqlInsUpd resultadoExeSqlInsUpd = new ResultadoExeSqlInsUpd();
+			//RESCATAMOS DATOS DE TABLA DE REFRENCIAS 1 DE REX (CATALOGOS)
+			Console.ForegroundColor = ConsoleColor.Blue;
+			Console.WriteLine("Inicio carga de datos desde paso referencias 1 REX...");
+			resultado.Estado = "OK";
+			using (var conexion = new SqlConnection(_connectionString))
+			{
+				var referencias1 = conexion.Query<CatalogoRex>(@"
+								  							   SELECT * FROM REX_CATALOGO WHERE LISTA = 'lta9' ");
+
+				string spName = "SP_REXSQL_INS_UPD_REFERENCIA1";
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio actualización de datos de referencias 1 hacia SQL...");
+
+				foreach (var referencia1 in referencias1)
+				{
+
+					DynamicParameters dynamicParameters = new DynamicParameters();
+					// Adding Input parameters.
+					dynamicParameters.Add("@ID", referencia1.Id);
+					dynamicParameters.Add("@ITEM", referencia1.Item);
+					dynamicParameters.Add("@NOMBRE", referencia1.Nombre);
+					if (referencia1.Habilitado)
+					{
+						dynamicParameters.Add("@VIGENCIA", "S");
+					}
+					else
+					{
+						dynamicParameters.Add("@VIGENCIA", "N");
+					}
+					// Adding Output parameter.
+					dynamicParameters.Add("@CANTIDAD_INS", DbType.Int32, direction: ParameterDirection.Output);
+					dynamicParameters.Add("@CANTIDAD_ACT", DbType.Int32, direction: ParameterDirection.Output);
+					conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+					resultadoExeSqlInsUpd.CantidadIns = dynamicParameters.Get<int>("@CANTIDAD_INS");
+					resultadoExeSqlInsUpd.CantidadUpd = dynamicParameters.Get<int>("@CANTIDAD_ACT");
+					if (resultadoExeSqlInsUpd.CantidadIns > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Refrencia 1 creada en base relacional : " + referencia1.Nombre);
+					}
+					else if (resultadoExeSqlInsUpd.CantidadUpd > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Refrencia 1 actualizada en base relacional : " + referencia1.Nombre);
+					}
+					else
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Error al actualizar o crear refrencia 1 : " + referencia1.Nombre);
+						resultado.Estado = "NO-OK";
+					}
+				}
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Termino de actualizacion de datos de refrencias 1 hacia SQL...");
+			}
+
+			return resultado;
+		}
+
+		public async Task<Resultado> ActualizacionReferencia2()
+		{
+			Resultado resultado = new Resultado();
+			ResultadoExeSqlInsUpd resultadoExeSqlInsUpd = new ResultadoExeSqlInsUpd();
+			//RESCATAMOS DATOS DE TABLA DE REFRENCIAS 2 DE REX (CATALOGOS)
+			Console.ForegroundColor = ConsoleColor.Blue;
+			Console.WriteLine("Inicio carga de datos desde paso referencias 2 REX...");
+			resultado.Estado = "OK";
+			using (var conexion = new SqlConnection(_connectionString))
+			{
+				var referencias2 = conexion.Query<CatalogoRex>(@"
+								  							   SELECT * FROM REX_CATALOGO WHERE LISTA = 'lta4' ");
+
+				string spName = "SP_REXSQL_INS_UPD_REFERENCIA2";
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio actualización de datos de referencias 2 hacia SQL...");
+
+				foreach (var referencia2 in referencias2)
+				{
+
+					DynamicParameters dynamicParameters = new DynamicParameters();
+					// Adding Input parameters.
+					dynamicParameters.Add("@ID", referencia2.Id);
+					dynamicParameters.Add("@ITEM", referencia2.Item);
+					dynamicParameters.Add("@NOMBRE", referencia2.Nombre);
+					if (referencia2.Habilitado)
+					{
+						dynamicParameters.Add("@VIGENCIA", "S");
+					}
+					else
+					{
+						dynamicParameters.Add("@VIGENCIA", "N");
+					}
+					// Adding Output parameter.
+					dynamicParameters.Add("@CANTIDAD_INS", DbType.Int32, direction: ParameterDirection.Output);
+					dynamicParameters.Add("@CANTIDAD_ACT", DbType.Int32, direction: ParameterDirection.Output);
+					conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+					resultadoExeSqlInsUpd.CantidadIns = dynamicParameters.Get<int>("@CANTIDAD_INS");
+					resultadoExeSqlInsUpd.CantidadUpd = dynamicParameters.Get<int>("@CANTIDAD_ACT");
+					if (resultadoExeSqlInsUpd.CantidadIns > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Refrencia 2 creada en base relacional : " + referencia2.Nombre);
+					}
+					else if (resultadoExeSqlInsUpd.CantidadUpd > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Refrencia 2 actualizada en base relacional : " + referencia2.Nombre);
+					}
+					else
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Error al actualizar o crear refrencia 2 : " + referencia2.Nombre);
+						resultado.Estado = "NO-OK";
+					}
+				}
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Termino de actualizacion de datos de refrencias 2 hacia SQL...");
 			}
 
 			return resultado;
@@ -1081,6 +1629,79 @@ namespace REX_Consumer_WorkerService.FlujoActualiza
 
 				Console.ForegroundColor = ConsoleColor.Blue;
 				Console.WriteLine("Termino de actualizacion de datos de colaboradores hacia SQL...");
+			}
+
+			return resultado;
+		}
+
+		public async Task<Resultado> ActualizacionContratoColaborador()
+		{
+			Resultado resultado = new Resultado();
+			ResultadoExeSqlInsUpd resultadoExeSqlInsUpd = new ResultadoExeSqlInsUpd();
+			//RESCATAMOS DATOS DE TABLA DE CONTRATOS DE REX
+			Console.ForegroundColor = ConsoleColor.Blue;
+			Console.WriteLine("Inicio carga de datos desde paso contratos REX...");
+			resultado.Estado = "OK";
+			using (var conexion = new SqlConnection(_connectionString))
+			{
+				var contratos = conexion.Query<ContratoRex>(@"
+										   				 SELECT * FROM REX_CONTRATO ");
+
+				string spName = "SP_REXSQL_INS_UPD_CONTRATO_COLABORADOR";
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio actualización de datos de contratos hacia SQL...");
+
+				foreach (var contrato in contratos)
+				{
+
+					DynamicParameters dynamicParameters = new DynamicParameters();
+					// Adding Input parameters.
+					dynamicParameters.Add("@RHCON_FECHA_INICIO", contrato.FechaInic);
+					dynamicParameters.Add("@RHCON_FECHA_TERMINO", contrato.FechaTerm);
+					dynamicParameters.Add("@CENTROCOST", contrato.CentroCost);
+					dynamicParameters.Add("@CARGO_LIQ", contrato.Cargo);
+					dynamicParameters.Add("@CAUSAL_TERMINO", contrato.Causal);
+					dynamicParameters.Add("@EMPLEADO", contrato.Empleado.Trim().Substring(0,contrato.Empleado.Trim().Length - 2));
+					dynamicParameters.Add("@EMPLEADO_DV", contrato.Empleado.Trim().Substring(contrato.Empleado.Trim().Length - 1, 1));
+					dynamicParameters.Add("@CARGO_GEN", contrato.Lta10);
+					dynamicParameters.Add("@REFERENCIA1", contrato.Lta09);
+					dynamicParameters.Add("@REFERENCIA2", contrato.Lta04);
+					dynamicParameters.Add("@RHCON_FECHA_CREACION", contrato.Fecha_creacion);
+
+					dynamicParameters.Add("@RHCON_FECHA_MODIFICACION", contrato.Fecha_modificacion);
+					dynamicParameters.Add("@RHCON_SUELDO_BASE", contrato.SueldoBase);
+					dynamicParameters.Add("@RHCON_NOMBRE", contrato.Nombre);
+					dynamicParameters.Add("@RHCON_CONTRATO_NUMERO", contrato.Contrato);
+					dynamicParameters.Add("@TIPO_CONTRATO", contrato.TipoCont);
+					dynamicParameters.Add("@ESTADO_CONTRATO", contrato.Estado);
+					
+					// Adding Output parameter.
+					dynamicParameters.Add("@CANTIDAD_INS", DbType.Int32, direction: ParameterDirection.Output);
+					dynamicParameters.Add("@CANTIDAD_ACT", DbType.Int32, direction: ParameterDirection.Output);
+					conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+					resultadoExeSqlInsUpd.CantidadIns = dynamicParameters.Get<int>("@CANTIDAD_INS");
+					resultadoExeSqlInsUpd.CantidadUpd = dynamicParameters.Get<int>("@CANTIDAD_ACT");
+					if (resultadoExeSqlInsUpd.CantidadIns > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Contrato de colaborador creado en base relacional : " + contrato.Empleado + " contrato Id: " + contrato.Id.ToString());
+					}
+					else if (resultadoExeSqlInsUpd.CantidadUpd > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Contrato de colaborador actualizado en base relacional : " + contrato.Empleado + " contrato Id: " + contrato.Id.ToString());
+					}
+					else
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Error al actualizar o crear contrato de colaborador : " + contrato.Empleado + " contrato Id: " + contrato.Id.ToString());
+						resultado.Estado = "NO-OK";
+					}
+				}
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Termino de actualizacion de datos de contratos de colaboradores hacia SQL...");
 			}
 
 			return resultado;

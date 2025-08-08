@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace REX_Consumer_WorkerService.Models
 {
-	public class Contrato
+	public class ContratoRex
 	{
 		public decimal Id { get; set; }
 		public string FechaInic { get; set; } = string.Empty;
@@ -101,7 +101,7 @@ namespace REX_Consumer_WorkerService.Models
 		public string Identificador_instrumento { get; set; } = string.Empty;
 		public string Reconocimiento_antiguedad { get; set; } = string.Empty;
 		public string Empleado { get; set; } = string.Empty;
-		public string Contrat { get; set; } = string.Empty;
+		public string Contrato { get; set; } = string.Empty;
 		public Boolean Borrador { get; set; }
 		public string Jefatura_directa { get; set; } = string.Empty;
 		public string Jefatura_indirecta { get; set; } = string.Empty;
