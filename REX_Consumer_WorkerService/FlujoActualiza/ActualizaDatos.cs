@@ -321,8 +321,47 @@ namespace REX_Consumer_WorkerService.FlujoActualiza
 				Console.WriteLine("Actualizacion de contratos de colaboradores finalizado con errores.");
 			}
 
-			return resultado;
+			//Actualiza información de vacaciones de colaboradores
+			resultado = await ActualizacionVacacionColaborador();
+			if (resultado.Estado == "OK")
+			{
+				Console.ForegroundColor = ConsoleColor.Green;
+				Console.WriteLine("Actualizacion de vacaciones de colaboradores finalizado correctamente.");
+			}
+			else
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("Actualizacion de vacaciones de colaboradores finalizado con errores.");
+			}
 
+			//Actualiza información de licencias medicas de colaboradores
+			resultado = await ActualizacionLicenciasMedicasColaborador();
+			if (resultado.Estado == "OK")
+			{
+				Console.ForegroundColor = ConsoleColor.Green;
+				Console.WriteLine("Actualizacion de licencias medicas de colaboradores finalizado correctamente.");
+			}
+			else
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("Actualizacion de licencias medicas de colaboradores finalizado con errores.");
+			}
+
+
+			//Actualiza información de permisos de colaboradores
+			resultado = await ActualizacionPermisosColaborador();
+			if (resultado.Estado == "OK")
+			{
+				Console.ForegroundColor = ConsoleColor.Green;
+				Console.WriteLine("Actualizacion de permisos de colaboradores finalizado correctamente.");
+			}
+			else
+			{
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("Actualizacion de permisos de colaboradores finalizado con errores.");
+			}
+
+			return resultado;
 
 		}
 
@@ -1657,6 +1696,7 @@ namespace REX_Consumer_WorkerService.FlujoActualiza
 
 					DynamicParameters dynamicParameters = new DynamicParameters();
 					// Adding Input parameters.
+					dynamicParameters.Add("@ID", contrato.Id);
 					dynamicParameters.Add("@RHCON_FECHA_INICIO", contrato.FechaInic);
 					dynamicParameters.Add("@RHCON_FECHA_TERMINO", contrato.FechaTerm);
 					dynamicParameters.Add("@CENTROCOST", contrato.CentroCost);
@@ -1707,5 +1747,186 @@ namespace REX_Consumer_WorkerService.FlujoActualiza
 			return resultado;
 		}
 
+		public async Task<Resultado> ActualizacionVacacionColaborador()
+		{
+			Resultado resultado = new Resultado();
+			ResultadoExeSqlInsUpd resultadoExeSqlInsUpd = new ResultadoExeSqlInsUpd();
+			//RESCATAMOS DATOS DE TABLA DE VACACIONES DE REX
+			Console.ForegroundColor = ConsoleColor.Blue;
+			Console.WriteLine("Inicio carga de datos desde paso vacaciones REX...");
+			resultado.Estado = "OK";
+			using (var conexion = new SqlConnection(_connectionString))
+			{
+				var vacaciones = conexion.Query<Vacacion>(@"
+								   					      SELECT * FROM REX_VACACION ");
+
+				string spName = "SP_REXSQL_INS_UPD_VACACION";
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio actualización de datos de vacaciones hacia SQL...");
+
+				foreach (var vacacion in vacaciones)
+				{
+
+					DynamicParameters dynamicParameters = new DynamicParameters();
+					// Adding Input parameters.
+					dynamicParameters.Add("@RHCOL_RUT", vacacion.Empleado.Trim().Substring(0, vacacion.Empleado.Trim().Length - 2));
+					dynamicParameters.Add("@RHCOL_DV", vacacion.Empleado.Trim().Substring(vacacion.Empleado.Trim().Length - 1, 1));
+					dynamicParameters.Add("@ID_REX", vacacion.Id);
+					dynamicParameters.Add("@FECHA_INICIO", vacacion.FechaInic);
+					dynamicParameters.Add("@FECHA_TERMINO", vacacion.FechaTerm);
+			
+					// Adding Output parameter.
+					dynamicParameters.Add("@CANTIDAD_INS", DbType.Int32, direction: ParameterDirection.Output);
+					dynamicParameters.Add("@CANTIDAD_ACT", DbType.Int32, direction: ParameterDirection.Output);
+					conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+					resultadoExeSqlInsUpd.CantidadIns = dynamicParameters.Get<int>("@CANTIDAD_INS");
+					resultadoExeSqlInsUpd.CantidadUpd = dynamicParameters.Get<int>("@CANTIDAD_ACT");
+					if (resultadoExeSqlInsUpd.CantidadIns > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Vacacion creada en base relacional : " + vacacion.Empleado);
+					}
+					else if (resultadoExeSqlInsUpd.CantidadUpd > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("vacacion actualizada en base relacional : " + vacacion.Empleado);
+					}
+					else
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Error al actualizar o crear vacacion : " + vacacion.Empleado);
+						resultado.Estado = "NO-OK";
+					}
+				}
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Termino de actualizacion de datos de vacaciones hacia SQL...");
+			}
+
+			return resultado;
+		}
+
+		public async Task<Resultado> ActualizacionLicenciasMedicasColaborador()
+		{
+			Resultado resultado = new Resultado();
+			ResultadoExeSqlInsUpd resultadoExeSqlInsUpd = new ResultadoExeSqlInsUpd();
+			//RESCATAMOS DATOS DE TABLA DE VACACIONES DE REX
+			Console.ForegroundColor = ConsoleColor.Blue;
+			Console.WriteLine("Inicio carga de datos desde paso licencias medicas REX...");
+			resultado.Estado = "OK";
+			using (var conexion = new SqlConnection(_connectionString))
+			{
+				var licenciasMedicas = conexion.Query<LicenciaMedica>(@"
+								   									  SELECT * FROM REX_LICENCIA_MEDICA ");
+
+				string spName = "SP_REXSQL_INS_UPD_LICENCIA_MEDICA";
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio actualización de datos de licencias medicas hacia SQL...");
+
+				foreach (var licencia in licenciasMedicas)
+				{
+
+					DynamicParameters dynamicParameters = new DynamicParameters();
+					// Adding Input parameters.
+					dynamicParameters.Add("@RHCON_ID_REX", licencia.Contrato);
+					dynamicParameters.Add("@ID_REX", licencia.Id);
+					dynamicParameters.Add("@FECHA_INICIO", licencia.Fecha_Inicio);
+					dynamicParameters.Add("@FECHA_TERMINO", licencia.Fecha_Termino);
+					dynamicParameters.Add("@TIPO_LICENCIA", licencia.Tipo_Licencia);
+
+					// Adding Output parameter.
+					dynamicParameters.Add("@CANTIDAD_INS", DbType.Int32, direction: ParameterDirection.Output);
+					dynamicParameters.Add("@CANTIDAD_ACT", DbType.Int32, direction: ParameterDirection.Output);
+					conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+					resultadoExeSqlInsUpd.CantidadIns = dynamicParameters.Get<int>("@CANTIDAD_INS");
+					resultadoExeSqlInsUpd.CantidadUpd = dynamicParameters.Get<int>("@CANTIDAD_ACT");
+					if (resultadoExeSqlInsUpd.CantidadIns > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Licencia medica creada en base relacional : " + licencia.Id);
+					}
+					else if (resultadoExeSqlInsUpd.CantidadUpd > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Licencia medica actualizada en base relacional : " + licencia.Id);
+					}
+					else
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Error al actualizar o crear licencia medica. Posiblemente contrato no esta activo  : " + licencia.Contrato);
+						resultado.Estado = "NO-OK";
+					}
+				}
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Termino de actualizacion de datos de licencias medicas hacia SQL...");
+			}
+
+			return resultado;
+		}
+
+		public async Task<Resultado> ActualizacionPermisosColaborador()
+		{
+			Resultado resultado = new Resultado();
+			ResultadoExeSqlInsUpd resultadoExeSqlInsUpd = new ResultadoExeSqlInsUpd();
+			//RESCATAMOS DATOS DE TABLA DE VACACIONES DE REX
+			Console.ForegroundColor = ConsoleColor.Blue;
+			Console.WriteLine("Inicio carga de datos desde paso permisos REX...");
+			resultado.Estado = "OK";
+			using (var conexion = new SqlConnection(_connectionString))
+			{
+				var permisos = conexion.Query<Permiso>(@"
+								   					   SELECT * FROM REX_PERMISO ");
+
+				string spName = "SP_REXSQL_INS_UPD_PERMISO";
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Inicio actualización de datos de permisos hacia SQL...");
+
+				foreach (var permiso in permisos)
+				{
+
+					DynamicParameters dynamicParameters = new DynamicParameters();
+					// Adding Input parameters.
+					dynamicParameters.Add("@RHCON_ID_REX", permiso.Contrato);
+					dynamicParameters.Add("@ID_REX", permiso.Id);
+					dynamicParameters.Add("@FECHA_INICIO", permiso.Fecha_Inicio);
+					dynamicParameters.Add("@FECHA_TERMINO", permiso.Fecha_Termino);
+					dynamicParameters.Add("@SUBTIPO_PERMISO", permiso.Subtipo_Permiso);
+					dynamicParameters.Add("@GOCE_SUELDO", permiso.Goce_Sueldo);
+					dynamicParameters.Add("@TIPO_MEDIO_DIA", permiso.Tipo_Medio_Dia);
+
+					// Adding Output parameter.
+					dynamicParameters.Add("@CANTIDAD_INS", DbType.Int32, direction: ParameterDirection.Output);
+					dynamicParameters.Add("@CANTIDAD_ACT", DbType.Int32, direction: ParameterDirection.Output);
+					conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+					resultadoExeSqlInsUpd.CantidadIns = dynamicParameters.Get<int>("@CANTIDAD_INS");
+					resultadoExeSqlInsUpd.CantidadUpd = dynamicParameters.Get<int>("@CANTIDAD_ACT");
+					if (resultadoExeSqlInsUpd.CantidadIns > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Permiso creado en base relacional : " + permiso.Id);
+					}
+					else if (resultadoExeSqlInsUpd.CantidadUpd > 0)
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Permiso actualizado en base relacional : " + permiso.Id);
+					}
+					else
+					{
+						Console.ForegroundColor = ConsoleColor.Green;
+						Console.WriteLine("Error al actualizar o crear permiso. Posiblemente contrato no esta activo  : " + permiso.Contrato);
+						resultado.Estado = "NO-OK";
+					}
+				}
+
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine("Termino de actualizacion de datos de permisos hacia SQL...");
+			}
+
+			return resultado;
+		}
 	}
 }

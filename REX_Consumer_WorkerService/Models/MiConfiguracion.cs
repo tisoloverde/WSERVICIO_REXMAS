@@ -17,6 +17,8 @@ namespace REX_Consumer_WorkerService.Models
 		public string AplicaConstantes { get; set; } = string.Empty;
 		public string FechaCorteColaborador { get; set; } = string.Empty;
 		public string FechaInicioVacacion { get; set; } = string.Empty;
+		public string FechaInicioLicenciaMedica { get; set; } = string.Empty;
+		public string FechaInicioPermisos { get; set; } = string.Empty;
 		public string CatalogoBanco { get; set; } = string.Empty;
 		public string CatalogoProfesion { get; set; } = string.Empty;
 		public string CatalogoFormaPago { get; set; } = string.Empty;
@@ -32,7 +34,6 @@ namespace REX_Consumer_WorkerService.Models
 		public string CatalogoReferencia2 { get; set; } = string.Empty;
 		public string CatalogoFeriados { get; set; } = string.Empty;
 		public string CatalogoFeriadosMovi { get; set; } = string.Empty;
-
 		public string ConstanteTipoContrato { get; set; } = string.Empty;
 		public string ConstanteEstadoContrato { get; set; } = string.Empty;
 

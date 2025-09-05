@@ -43,6 +43,8 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 				AplicaConstantes = configuration["MiConfiguracion:AplicaConstantes"],
 				FechaCorteColaborador = configuration["MiConfiguracion:FechaCorteColaborador"],
 				FechaInicioVacacion = configuration["MiConfiguracion:FechaInicioVacacion"],
+				FechaInicioLicenciaMedica = configuration["MiConfiguracion:FechaInicioLicenciaMedica"],
+				FechaInicioPermisos = configuration["MiConfiguracion:FechaInicioPermisos"],
 				CatalogoBanco = configuration["MiConfiguracion:CatalogoBanco"],
 				CatalogoProfesion = configuration["MiConfiguracion:CatalogoProfesion"],
 				CatalogoFormaPago = configuration["MiConfiguracion:CatalogoFormaPago"],
@@ -189,13 +191,16 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 				Console.WriteLine("Inicio carga de datos desde REX...");
 				// Carga feriados movi desde catalogos 
 				resultado = await CargaFeriadosMovi(loginToken.Token);
-						
+
 				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.WriteLine("Inicio carga de datos desde REX...");
 				// Carga centros de costo
 				resultado = await CargaCentrosCosto(loginToken.Token);
 				resultado = new Resultado();
-				// Carga colaboradores
+
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Inicio carga de datos desde REX...");
+				//Carga colaboradores
 				resultado = await CargaColaboradores(loginToken.Token);
 				resultado = new Resultado();
 
@@ -216,15 +221,22 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 					resultado = await CargaContratosColaborador(loginToken.Token);
 					resultado = new Resultado();
 				}
-				
+
 				//**********************************************************************
 
 
 				// Carga vacaciones
 				resultado = await CargaVacaciones(loginToken.Token);
 				resultado = new Resultado();
-				
-				
+
+				// Carga licencias médicas
+				resultado = await CargaLicenciasMedicas(loginToken.Token);
+				resultado = new Resultado();
+
+				// Carga Permisos
+				resultado = await CargaPermisos(loginToken.Token);
+				resultado = new Resultado();
+
 
 			}
 
@@ -1932,7 +1944,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 			List<Colaborador> colaboradores = new List<Colaborador>();
 			string contents;
 			var client = new HttpClient();
-			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v2/empleados?fechaCambio__gt=" + FechaCorte + "&paginar=0&pagina=0&incluir_solo_aprobadores=0");
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/empleados?fechaCambio__gt=" + FechaCorte + "&paginar=0&pagina=&incluir_solo_aprobadores=");
 			request.Headers.Add("Authorization", "Token " + Token);
 			//request.Headers.Add("Cookie", "csrftoken=46N0xuXLsR3JIYUUc1K5wMgcR78ipD1k");
 			var content = new StringContent(string.Empty);
@@ -2063,7 +2075,7 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 			using (var conexion = new SqlConnection(_connectionString))
 			{
 				var colaboradores = conexion.Query<Colaborador>(@"
-										   					    SELECT EMPLEADO FROM REX_COLABORADOR ");
+										   					    SET ROWCOUNT 1000 SELECT EMPLEADO FROM REX_COLABORADOR WHERE SW_CONTRATO = 'N' ");
 				Console.ForegroundColor = ConsoleColor.Blue;
 				Console.WriteLine("Inicio carga de datos desde API REX de contratos por colaborador...");
 
@@ -2236,6 +2248,11 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 									}
 								}
 
+								
+
+
+
+
 							}
 							else
 							{
@@ -2243,6 +2260,12 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 								
 							}
 							resultado.Estado = response.StatusCode.ToString();
+						}
+
+						// Actualizamos en la tabla de colaboradores que ya tiene contrato
+						using (var conexion3 = new SqlConnection(_connectionString))
+						{
+							var ejecuta = conexion3.Execute("UPDATE REX_COLABORADOR SET SW_CONTRATO = 'S' WHERE LTRIM(RTRIM(EMPLEADO)) = '" + colaborador.Empleado + "'");
 						}
 
 					}
@@ -2461,19 +2484,19 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 		/// <returns></returns>
 		public async Task<Resultado> CargaVacaciones(string Token)
 		{
-			// Si existe fecha de inicio, se utiliza para la consulta, sino se utiliza la fecha de ayer
+			// Si existe fecha de inicio, se utiliza para la consulta, sino se utiliza la fecha de un mes de antelación
 			// La fecha de termino del periodo es de 2 meses hacia adelante 
 			string FechaInicioVacacion = "";
 			string FechaTerminoVacacion = "";
 			if (_miConfiguracion.FechaInicioVacacion.Trim().Equals(string.Empty))
 			{
-				FechaInicioVacacion = _miConfiguracion.FechaDiaAnterior.ToString("yyyy-MM-dd");
+				FechaInicioVacacion = _miConfiguracion.FechaDiaAnterior.AddMonths(-1).ToString("yyyy-MM-dd"); // 1 mes hacia atras 
 			}
 			else
 			{
 				FechaInicioVacacion = _miConfiguracion.FechaInicioVacacion;
 			}
-			FechaTerminoVacacion = _miConfiguracion.FechaActual.Date.AddMonths(2).ToString("yyyy-MM-dd");
+			FechaTerminoVacacion = _miConfiguracion.FechaActual.Date.AddMonths(12).ToString("yyyy-MM-dd"); // 12 meses hacia adelante
 
 
 
@@ -2553,6 +2576,219 @@ namespace REX_Consumer_WorkerService.FlujoCarga
 			return resultado;
 		}
 
-		
+		/// <summary>
+		/// Carga registro de licencias médicas desde la API de REX 
+		/// </summary>
+		/// <param name="Token"></param>
+		/// <returns></returns>
+		public async Task<Resultado> CargaLicenciasMedicas(string Token)
+		{
+			// Si existe fecha de inicio, se utiliza para la consulta, sino se utiliza la fecha de un mes de anticipacion
+			// La fecha de termino del periodo es de 1 año hacia adelante
+			string FechaInicioLicenciaMedica = "";
+			string FechaTerminoLicenciaMedica = "";
+			if (_miConfiguracion.FechaInicioLicenciaMedica.Trim().Equals(string.Empty))
+			{
+				FechaInicioLicenciaMedica = _miConfiguracion.FechaDiaAnterior.AddMonths(-1).ToString("yyyy-MM-dd"); // 1 mes hacia atras 
+			}
+			else
+			{
+				FechaInicioLicenciaMedica = _miConfiguracion.FechaInicioLicenciaMedica;
+			}
+			FechaTerminoLicenciaMedica = _miConfiguracion.FechaActual.Date.AddMonths(12).ToString("yyyy-MM-dd"); // 12 meses hacia adelante
+
+
+
+			// Obtención de datos desde REX mediante llamada API 
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			Console.WriteLine("Consultando datos de registro de licencias medicas...");
+			Resultado resultado = new Resultado();
+			ResultadoExeSql resultadoExeSql = new ResultadoExeSql();
+			List<LicenciaMedica> licencias = new List<LicenciaMedica>();
+			string contents;
+			var client = new HttpClient();
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/ausentismos/licencias_medicas?fecha_inicio=" + FechaInicioLicenciaMedica + "&fecha_termino=" + FechaTerminoLicenciaMedica + "&detalle=True");
+			request.Headers.Add("Authorization", "Token " + Token);
+			//request.Headers.Add("Cookie", "csrftoken=46N0xuXLsR3JIYUUc1K5wMgcR78ipD1k");
+			var content = new StringContent(string.Empty);
+			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+			request.Content = content;
+			var response = await client.SendAsync(request);
+			contents = await response.Content.ReadAsStringAsync();
+
+			if (response.StatusCode.ToString().Equals("OK"))
+			{
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Consulta finalizada correctamente...");
+				// Deserializar el contenido JSON en un objeto de tipo RootObjectLicenciaMedica
+				var rootObjectLicenciaMedica = JsonConvert.DeserializeObject<RootObjectLicenciaMedica>(contents);
+				licencias = rootObjectLicenciaMedica.objetos;
+				// Grabación de datos en SQL Server (Tabla de paso licencias medicas)
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Regitrando información temporal de licencias medicas...");
+				string spName = "SP_REX_INSERTA_LICENCIA_MEDICA";
+				foreach (var licencia in licencias)
+				{
+
+                    foreach (var contrato in licencia.Contratos)
+                    {
+						using (var conexion = new SqlConnection(_connectionString))
+						{
+							DynamicParameters dynamicParameters = new DynamicParameters();
+							// Adding Input parameters.
+							dynamicParameters.Add("@Id", licencia.Id);
+							dynamicParameters.Add("@Contrato", contrato);
+							dynamicParameters.Add("@Fecha_Ingreso", licencia.Fecha_Ingreso);
+							dynamicParameters.Add("@Fecha_Inicio", licencia.Fecha_Inicio);
+							dynamicParameters.Add("@Fecha_Termino", licencia.Fecha_Termino);
+							dynamicParameters.Add("@Dias", licencia.Dias);
+							dynamicParameters.Add("@Tipo_Medio_Dia", licencia.Tipo_Medio_Dia);
+							dynamicParameters.Add("@Tipo_Licencia", licencia.Tipo_Licencia);
+							dynamicParameters.Add("@Numero_Licencia", licencia.Numero_Licencia);
+							dynamicParameters.Add("@Tipo_Ingreso", licencia.Tipo_Ingreso);
+							dynamicParameters.Add("@Fecha_Calculo", licencia.Fecha_Calculo);
+							dynamicParameters.Add("@Fecha_Aplicacion", licencia.Fecha_Aplicacion);
+							dynamicParameters.Add("@Licencia_Anterior", licencia.Licencia_Anterior);
+							dynamicParameters.Add("@Fecha_Licencia_Inicial", licencia.Fecha_Licencia_Inicial);
+							dynamicParameters.Add("@Total_Dias_Continuacion", licencia.Total_Dias_Continuacion);
+							dynamicParameters.Add("@Descripcion", licencia.Descripcion);
+							dynamicParameters.Add("@Subtipo_Licencia", licencia.Subtipo_Licencia);
+							dynamicParameters.Add("@Tipo_Licencia_Inicial", licencia.Tipo_Licencia_Inicial);
+							dynamicParameters.Add("@Medico_Tratante", licencia.Medico_Tratante);
+							dynamicParameters.Add("@Identificador_Medico_Tratante", licencia.Identificador_Medico_Tratante);
+							dynamicParameters.Add("@Especialidad_Medico", licencia.Especialidad_Medico);
+							dynamicParameters.Add("@Nombre_Especialidad_Medico", licencia.Nombre_Especialidad_Medico);
+							dynamicParameters.Add("@Dias_A_Pagar", licencia.Dias_A_Pagar);
+							dynamicParameters.Add("@No_Rebaja", licencia.No_Rebaja);
+							// Adding Output parameter.
+							dynamicParameters.Add("@CANTIDAD", DbType.Int32, direction: ParameterDirection.Output);
+							conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+							resultadoExeSql.Cantidad = dynamicParameters.Get<int>("@CANTIDAD");
+							if (resultadoExeSql.Cantidad > 0)
+							{
+								resultadoExeSql.Estado = "OK";
+								Console.ForegroundColor = ConsoleColor.Green;
+								Console.WriteLine("Registro de licencia medica creado correctamente en repositorio temporal : " + licencia.Id);
+							}
+							else
+							{
+								resultadoExeSql.Estado = "ERROR";
+								Console.ForegroundColor = ConsoleColor.Red;
+								Console.WriteLine("Error al registrar licencia medica en repositorio temporal : " + licencia.Id);
+							}
+						}
+					}
+					resultado.Estado = "OK";
+				}
+				resultado.Estado = "OK";
+			}
+			else
+			{
+				resultado.Estado = response.StatusCode.ToString();
+			}
+			return resultado;
+		}
+
+		/// <summary>
+		/// Carga registro de licencias médicas desde la API de REX 
+		/// </summary>
+		/// <param name="Token"></param>
+		/// <returns></returns>
+		public async Task<Resultado> CargaPermisos(string Token)
+		{
+			// Si existe fecha de inicio, se utiliza para la consulta, sino se utiliza la fecha de un mes de anticipacion
+			// La fecha de termino del periodo es de 1 año hacia adelante
+			string FechaInicioPermiso = "";
+			string FechaTerminoPermiso = "";
+			if (_miConfiguracion.FechaInicioPermisos.Trim().Equals(string.Empty))
+			{
+				FechaInicioPermiso = _miConfiguracion.FechaDiaAnterior.AddMonths(-1).ToString("yyyy-MM-dd"); // 1 mes hacia atras 
+			}
+			else
+			{
+				FechaInicioPermiso = _miConfiguracion.FechaInicioPermisos;
+			}
+			FechaTerminoPermiso = _miConfiguracion.FechaActual.Date.AddMonths(12).ToString("yyyy-MM-dd"); // 12 meses hacia adelante
+
+
+
+			// Obtención de datos desde REX mediante llamada API 
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			Console.WriteLine("Consultando datos de registro de permisos...");
+			Resultado resultado = new Resultado();
+			ResultadoExeSql resultadoExeSql = new ResultadoExeSql();
+			List<Permiso> permisos = new List<Permiso>();
+			string contents;
+			var client = new HttpClient();
+			var request = new HttpRequestMessage(HttpMethod.Get, _miConfiguracion.UrlBase + "/api/v3/ausentismos/permisos?fecha_inicio=" + FechaInicioPermiso + "&fecha_termino=" + FechaTerminoPermiso + "&paginar=0&detalle=True");
+			request.Headers.Add("Authorization", "Token " + Token);
+			//request.Headers.Add("Cookie", "csrftoken=46N0xuXLsR3JIYUUc1K5wMgcR78ipD1k");
+			var content = new StringContent(string.Empty);
+			content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+			request.Content = content;
+			var response = await client.SendAsync(request);
+			contents = await response.Content.ReadAsStringAsync();
+
+			if (response.StatusCode.ToString().Equals("OK"))
+			{
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Consulta finalizada correctamente...");
+				// Deserializar el contenido JSON en un objeto de tipo RootObjectPermiso
+				var rootObjectPermiso = JsonConvert.DeserializeObject<RootObjectPermiso>(contents);
+				permisos = rootObjectPermiso.objetos;
+				// Grabación de datos en SQL Server (Tabla de paso permisos)
+				Console.ForegroundColor = ConsoleColor.Yellow;
+				Console.WriteLine("Regitrando información temporal de permisos...");
+				string spName = "SP_REX_INSERTA_PERMISO";
+				foreach (var permiso in permisos)
+				{
+					foreach (var contrato in permiso.Contratos)
+					{
+						using (var conexion = new SqlConnection(_connectionString))
+						{
+							DynamicParameters dynamicParameters = new DynamicParameters();
+							// Adding Input parameters.
+							dynamicParameters.Add("@Id", permiso.Id);
+							dynamicParameters.Add("@Contrato", contrato);
+							dynamicParameters.Add("@Fecha_Ingreso", permiso.Fecha_Ingreso);
+							dynamicParameters.Add("@Fecha_Inicio", permiso.Fecha_Inicio);
+							dynamicParameters.Add("@Fecha_Termino", permiso.Fecha_Termino);
+							dynamicParameters.Add("@Dias", permiso.Dias);
+							dynamicParameters.Add("@Tipo", permiso.Tipo);
+							dynamicParameters.Add("@Tipo_Nombre", permiso.Tipo_Nombre);
+							dynamicParameters.Add("@Subtipo_Permiso", permiso.Subtipo_Permiso);
+							dynamicParameters.Add("@Subtipo_Permiso_Nombre", permiso.Subtipo_Permiso_Nombre);
+							dynamicParameters.Add("@Goce_Sueldo", permiso.Goce_Sueldo);
+							dynamicParameters.Add("@Descripcion", permiso.Descripcion);
+							dynamicParameters.Add("@Fecha_Aplicacion", permiso.Fecha_Aplicacion);
+							dynamicParameters.Add("@Tipo_Medio_Dia", permiso.Tipo_Medio_Dia);
+							// Adding Output parameter.
+							dynamicParameters.Add("@CANTIDAD", DbType.Int32, direction: ParameterDirection.Output);
+							conexion.Execute(spName, dynamicParameters, commandType: CommandType.StoredProcedure);
+							resultadoExeSql.Cantidad = dynamicParameters.Get<int>("@CANTIDAD");
+							if (resultadoExeSql.Cantidad > 0)
+							{
+								resultadoExeSql.Estado = "OK";
+								Console.ForegroundColor = ConsoleColor.Green;
+								Console.WriteLine("Registro de permiso creado correctamente en repositorio temporal : " + permiso.Id);
+							}
+							else
+							{
+								resultadoExeSql.Estado = "ERROR";
+								Console.ForegroundColor = ConsoleColor.Red;
+								Console.WriteLine("Error al registrar permiso en repositorio temporal : " + permiso.Id);
+							}
+						}
+					}
+					resultado.Estado = "OK";
+				}
+				resultado.Estado = "OK";
+			}
+			else
+			{
+				resultado.Estado = response.StatusCode.ToString();
+			}
+			return resultado;
+		}
 	}
 }
